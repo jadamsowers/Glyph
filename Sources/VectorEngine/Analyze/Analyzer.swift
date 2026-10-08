@@ -10,6 +10,9 @@ public struct Analysis: Sendable, Equatable {
     public var shares: [Double]
     /// Share of pixels at hard edges (box-averaged change above 40): logos have few; noise is all edge.
     public var edgeFraction: Double = 0
+    /// Share of opaque pixels within ΔE 6 of a significant palette color. Logos, icons and UI are
+    /// almost entirely flat palette color (≥ 0.9); photos are a continuum (smooth ones ~0.7).
+    public var paletteCoverage: Double = 1
     /// Hard-edged, unblended pixels (pixel art, or shapes drawn without anti-aliasing): every
     /// staircase step is real, so the image is traced exactly along pixel edges.
     public var isPixelArt: Bool = false
@@ -24,6 +27,7 @@ public struct ClassifierParams: Sendable, Equatable {
     public var logoMaxColors = 32
     public var logoMaxGradientFraction = 0.35
     public var logoMaxEdgeFraction = 0.35
+    public var logoMinCoverage = 0.88
     public var sampleDimension = 256
 
     public init() {}
@@ -38,12 +42,21 @@ enum Analyzer {
             blendSlack: p.blendSlack, blendKeepShare: p.blendKeepShare)
         let (gradient, edges) = changeFractions(sample, alphaThreshold: p.alphaThreshold)
         let pixelArt = looksLikePixelArt(bitmap, alphaThreshold: p.alphaThreshold)
+        let labs = palette.map(\.lab)
+        var covered = 0, opaque = 0
+        for px in sample.pixels where px.a >= p.alphaThreshold {
+            opaque += 1
+            let lab = Lab(px)
+            if labs.contains(where: { $0.distance(to: lab) < 6 }) { covered += 1 }
+        }
+        let coverage = opaque == 0 ? 1 : Double(covered) / Double(opaque)
         // Pixel art is flat by construction, however dense its edges.
-        let isLogo = pixelArt || (palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction && edges < p.logoMaxEdgeFraction)
+        let isLogo = pixelArt || (palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction
+            && edges < p.logoMaxEdgeFraction && coverage >= p.logoMinCoverage)
         return Analysis(
             kind: isLogo ? .logo : .photo, significantColors: palette.count, gradientFraction: gradient,
             palette: palette.map(\.color), shares: palette.map { total > 0 ? Double($0.count) / Double(total) : 0 },
-            edgeFraction: edges, isPixelArt: pixelArt)
+            edgeFraction: edges, paletteCoverage: coverage, isPixelArt: pixelArt)
     }
 
     /// Whether the image's edges are hard and unblended. Judged only at "stair" pixels — edge

@@ -110,3 +110,13 @@ extension AnalysisTests {
         #expect(a.significantColors >= 8)         // panels and swatches are real colors
     }
 }
+
+extension AnalysisTests {
+    // Regression (user report): a clear portrait photo with large smooth areas (wall, skin) was
+    // classified as a logo. Photos aren't covered by a few flat colors; logos and UI are.
+    @Test func smoothPortraitIsPhoto() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/portrait.png")
+        let a = analyze(Bitmap(cgImage: try InputImage.orientedImage(contentsOf: url)))
+        #expect(a.kind == .photo, "coverage \(a.paletteCoverage), gradient \(a.gradientFraction)")
+    }
+}

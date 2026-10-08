@@ -164,6 +164,7 @@ struct AdvancedOptionsView: View {
             Stepper("Logo max colors: \(advanced.logoMaxColors)", value: $advanced.logoMaxColors, in: 2...128)
             row("Logo max gradient", $advanced.logoMaxGradientFraction, 0...1)
             row("Logo max edge share", $advanced.logoMaxEdgeFraction, 0...1)
+            row("Logo min color coverage", $advanced.logoMinCoverage, 0...1)
             row("Color merge distance", $advanced.colorMergeDistance, 1...40)
             row("Min color share", $advanced.minColorShare, 0...0.05)
             row("Blend slack", $advanced.blendSlack, 0...0.5)
