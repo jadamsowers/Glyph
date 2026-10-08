@@ -38,6 +38,10 @@ public struct OutputParams: Sendable, Equatable {
     public var tracing: TracingMode
     /// Decimal places in SVG coordinates.
     public var precision: Int
+    /// Fill behind everything; nil = transparent.
+    public var background: RGBA? = nil
+    /// Transparent margin around the image (original px).
+    public var border = 0
 }
 
 /// Concrete values for every stage, after auto choices are filled in from the analysis.
@@ -106,6 +110,10 @@ public struct Options: Sendable, Equatable {
     /// Long side (px) the result will be shown at; detail invisible at that size is dropped.
     /// nil = shown at original size.
     public var displaySize: Int?
+    /// Black-and-white tracing (nil = color).
+    public var monochrome: Monochrome?
+    /// Transparent margin added around the image (original px), e.g. so shapes touching the edge close.
+    public var border = 0
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -118,7 +126,7 @@ public struct Options: Sendable, Equatable {
     }
 
     public func resolved(with analysis: Analysis) -> ResolvedOptions {
-        let kind = self.kind ?? analysis.kind
+        let kind = monochrome != nil ? .logo : (self.kind ?? analysis.kind)
         let isLogo = kind == .logo
         let a = advanced
         let detail = max(0, min(1, self.detail ?? (isLogo ? 0.6 : 0.3)))
@@ -127,7 +135,7 @@ public struct Options: Sendable, Equatable {
         let exact = exactPixels ?? analysis.isPixelArt
         let speck = max(0, speckSize ?? (exact ? 0 : (isLogo ? 4 : 24)))
 
-        var prefilter = PrefilterParams(enabled: a.prefilter ?? !isLogo)
+        var prefilter = PrefilterParams(enabled: monochrome == nil && (a.prefilter ?? !isLogo))
         prefilter.radius = a.prefilterRadius
         prefilter.sigmaColor = a.prefilterSigmaColor
         prefilter.alphaThreshold = a.alphaThreshold
@@ -140,6 +148,7 @@ public struct Options: Sendable, Equatable {
         quantize.blendKeepShare = a.blendKeepShare
         quantize.kmeansIterations = a.kmeansIterations
         quantize.kmeansSampleSize = a.kmeansSampleSize
+        quantize.monochrome = monochrome
 
         let contrast = a.contrastWeighting ? a.contrastReference : nil
         var segment = SegmentParams(speckSize: speck)
@@ -159,7 +168,8 @@ public struct Options: Sendable, Equatable {
                 contrastReference: contrast),
             curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance,
                                exactPixels: exact, contrastReference: contrast, simplify: max(0, min(1, simplify ?? 0))),
-            output: OutputParams(tracing: tracing ?? (isLogo || exact ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision))))
+            output: OutputParams(tracing: tracing ?? (isLogo || exact ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision)),
+                                 background: monochrome?.background, border: max(0, border)))
     }
 }
 

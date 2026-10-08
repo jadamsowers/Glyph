@@ -148,6 +148,7 @@ public enum Pipeline {
     static func resolve(_ options: Options, _ analysis: Analysis, _ input: InputImage) -> ResolvedOptions {
         var r = options.resolved(with: analysis).adjusted(forUpscale: input.upscale)
             .adjusted(forDisplay: options.displaySize, longSide: max(input.originalWidth, input.originalHeight))
+        r.prefilter.border = r.output.border * input.upscale
         let longOriginal = Double(max(input.originalWidth, input.originalHeight))
         let display = options.displaySize.map { min(Double($0), longOriginal) } ?? longOriginal
         r.curve.displayScale = display / Double(max(input.bitmap.width, input.bitmap.height))
@@ -193,17 +194,22 @@ public enum Pipeline {
                                          bounds: (s.input.bitmap.width, s.input.bitmap.height))
         case .svg:
             let r = s.resolved!, input = s.input
-            let shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
+            var shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
                 .map { $0.scaled(input.scaleX, input.scaleY) }
+            let outW = input.originalWidth + 2 * r.output.border, outH = input.originalHeight + 2 * r.output.border
+            if let bg = r.output.background {
+                let w = Double(outW), h = Double(outH)
+                shapes.insert(VectorShape(color: bg, subpaths: [Subpath(start: .zero, segments: [
+                    .line(to: Vec2(w, 0)), .line(to: Vec2(w, h)), .line(to: Vec2(0, h)), .line(to: .zero)])]), at: 0)
+            }
             // Stacked output gets an underlay stroke to hide sibling seams: at least one processing
             // pixel, and at least one display pixel when shown smaller (output units throughout).
             let longSide = Double(max(input.originalWidth, input.originalHeight))
             let displayPixel = s.options.displaySize.map { longSide / Double(max(1, min(Int(longSide), $0))) } ?? 1
             let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY, displayPixel) : 0
-            var result = VectorResult(shapes: shapes, width: input.originalWidth, height: input.originalHeight,
-                                      precision: r.output.precision, seamStroke: seam)
+            var result = VectorResult(shapes: shapes, width: outW, height: outH, precision: r.output.precision, seamStroke: seam)
             result.stats.visibleDifference = Perceptual.visibleDifference(
-                shapes, outputWidth: input.originalWidth, outputHeight: input.originalHeight, reference: s.prefiltered!,
+                shapes, outputWidth: outW, outputHeight: outH, reference: s.prefiltered!,
                 compareSize: s.options.displaySize ?? 512)
             s.result = result
         }

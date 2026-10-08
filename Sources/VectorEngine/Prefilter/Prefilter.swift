@@ -5,13 +5,16 @@ public struct PrefilterParams: Sendable, Equatable {
     public var radius: Int = 2
     public var sigmaColor: Double = 24
     public var alphaThreshold: UInt8 = 128
+    /// Transparent margin added on every side (processing px).
+    public var border = 0
 
     public init(enabled: Bool) { self.enabled = enabled }
 }
 
 enum Prefilter {
     static func apply(_ b: Bitmap, params p: PrefilterParams) -> Bitmap {
-        p.enabled && p.radius > 0 ? bilateral(b, radius: p.radius, sigmaColor: p.sigmaColor, alphaThreshold: p.alphaThreshold) : b
+        let filtered = p.enabled && p.radius > 0 ? bilateral(b, radius: p.radius, sigmaColor: p.sigmaColor, alphaThreshold: p.alphaThreshold) : b
+        return filtered.padded(by: p.border)
     }
 
     /// Edge-preserving blur: each neighbor is weighted by spatial distance and color similarity.

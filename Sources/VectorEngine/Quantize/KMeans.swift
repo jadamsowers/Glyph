@@ -1,6 +1,7 @@
 extension Quantizer {
     static func quantize(_ bitmap: Bitmap, params: QuantizeParams) -> QuantizedImage {
-        switch params.kind {
+        if let mono = params.monochrome { return monochrome(bitmap, mono) }
+        return switch params.kind {
         case .logo: logo(bitmap, params: params)
         case .photo: photo(bitmap, params: params)
         }

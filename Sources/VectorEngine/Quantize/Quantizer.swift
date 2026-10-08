@@ -9,6 +9,8 @@ public struct QuantizeParams: Sendable, Equatable {
     public var blendKeepShare: Double = 0.03
     public var kmeansIterations: Int = 12
     public var kmeansSampleSize: Int = 20_000
+    /// Black-and-white mode (overrides `kind`).
+    public var monochrome: Monochrome? = nil
 
     public init(kind: ImageKind, colorCount: Int) {
         self.kind = kind
