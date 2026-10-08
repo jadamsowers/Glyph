@@ -56,34 +56,38 @@ Computed on a nearest-neighbor sample (long side ≤ 256 px):
 ## 4. API
 
 ```swift
-public struct Options {
-    // Common
-    var kind: ImageKind?            // nil = auto
-    var tracing: TracingMode?       // nil = auto (logo→.sharedEdges, photo→.stacked)
-    var colorCount: Int?            // nil = auto
-    var detail: Double              // 0…1, maps to polygon tolerance
-    var smoothness: Double          // 0…1, maps to alpha / corner threshold
-    var speckSize: Int              // px
-    // Advanced
-    var advanced: AdvancedOptions   // all thresholds: tolerances, alphamax, curve tolerance,
-                                    // precision, max dimension, classifier thresholds, prefilter strength...
+public struct Options {                 // nil = choose automatically from the analysis
+    var kind: ImageKind?                // .logo / .photo
+    var tracing: TracingMode?           // .sharedEdges / .stacked (auto: logo→shared, photo→stacked)
+    var colorCount: Int?
+    var detail: Double?                 // 0…1 → polygon & curve tolerances
+    var smoothness: Double?             // 0…1 → corner angle
+    var speckSize: Int?
+    var advanced: AdvancedOptions       // every threshold (classifier, palette, prefilter, k-means,
+                                        // geometry, precision, max processing dimension)
+    func resolved(with: Analysis) -> ResolvedOptions   // concrete per-stage params
 }
 
 public enum Stage: Int, CaseIterable { case analyze, prefilter, quantize, segment, contours, polygon, curves, svg }
 
-public struct StageResult { let stage: Stage; let payload: StagePayload; let duration: Duration }
-
-public final class Vectorizer {
-    func run(_ image: CGImage, options: Options, from: Stage = .analyze,
-             reusing: PipelineCache?) -> AsyncThrowingStream<StageResult, Error>
-    func vectorize(_ image: CGImage, options: Options) throws -> VectorResult  // sync, for CLI
+public struct PipelineState {           // every stage's output so far (all Sendable value types)
+    let input: InputImage               // processing bitmap + original size + identity
+    var analysis, prefiltered, quantized, segmentation, topology, polygons, curves, result ...
 }
+public struct StageEvent { let stage: Stage; let duration: Duration; let reused: Bool; let state: PipelineState }
+
+public enum Pipeline {
+    static func run(input:options:reusing: PipelineState?, onStage: (StageEvent) throws -> Void) throws -> PipelineState
+    static func stream(input:options:reusing:) -> AsyncThrowingStream<StageEvent, Error>   // for the app
+}
+public enum StageRenderer { static func image(for: Stage, in: PipelineState, scale: Double) -> CGImage? }
+public enum Vectorizer { static func vectorize(_: InputImage, options:) throws -> VectorResult   // shapes + svg + stats
+                         static func vectorize(contentsOf: URL, options:) throws -> VectorResult }
 ```
 
-- `PipelineCache` holds prior stage outputs so the app can re-run from the earliest stage affected by a changed option (e.g., smoothness change → restart at `.curves`).
-- Cancellation via Swift task cancellation; stages check `Task.isCancelled` between steps.
-- `VectorResult`: final path model (`[VectorShape]` with color + `[Subpath]` of lines/cubics), SVG string, stats.
-- `StagePayload` provides a `CGImage` rendering for every stage (used by app thumbnails and CLI `--stages`).
+- Reuse: passing the previous `PipelineState` reuses every stage before the first one whose resolved parameters changed (same input only), e.g. a smoothness change restarts at `.polygon`, a tracing change only redoes `.svg`.
+- Cancellation: throwing from `onStage`, or cancelling the task consuming `stream`, stops the run between stages.
+- Stage pictures are rendered on demand from the stored values (`StageRenderer`), keeping all stage outputs `Sendable`.
 
 ## 5. macOS App (SwiftUI)
 
