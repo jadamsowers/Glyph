@@ -45,7 +45,8 @@ struct VectorizeCommand: ParsableCommand {
         options.advanced.maxProcessingDimension = maxSize
         options.advanced.minProcessingDimension = minSize
 
-        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize, minDimension: minSize)
+        // Exact pixel tracing wants the original pixels, never an upscaled blur of them.
+        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize, minDimension: pixels == .on ? 0 : minSize)
         let state = try Pipeline.run(input: image, options: options) { event in
             guard verbose else { return }
             let c = event.duration.components
