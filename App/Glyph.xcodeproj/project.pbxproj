@@ -18,9 +18,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		003EFCA627A330BE07EC16A8 /* macos-image-vector */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "macos-image-vector"; path = ..; sourceTree = SOURCE_ROOT; };
 		5F14525930CAEF4A7CA1506C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasView.swift; sourceTree = "<group>"; };
+		6C433D84F165A2D0D0E2C099 /* glyph */ = {isa = PBXFileReference; lastKnownFileType = folder; name = glyph; path = ..; sourceTree = SOURCE_ROOT; };
 		7D63D8525429087E12F800F0 /* Glyph.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glyph.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0F27A4A3B54426A7160A07E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlyphApp.swift; sourceTree = "<group>"; };
@@ -54,7 +54,7 @@
 		3211C369E072987F8B6752DF /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				003EFCA627A330BE07EC16A8 /* macos-image-vector */,
+				6C433D84F165A2D0D0E2C099 /* glyph */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
