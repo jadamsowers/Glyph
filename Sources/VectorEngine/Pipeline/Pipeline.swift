@@ -166,7 +166,10 @@ public enum Pipeline {
             let r = s.resolved!, input = s.input
             let shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
                 .map { $0.scaled(input.scaleX, input.scaleY) }
-            s.result = VectorResult(shapes: shapes, width: input.originalWidth, height: input.originalHeight, precision: r.output.precision)
+            // Stacked output gets a one-processing-pixel underlay stroke to hide sibling seams.
+            let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY) : 0
+            s.result = VectorResult(shapes: shapes, width: input.originalWidth, height: input.originalHeight,
+                                    precision: r.output.precision, seamStroke: seam)
         }
     }
 }

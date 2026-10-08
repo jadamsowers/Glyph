@@ -79,7 +79,7 @@ public enum StageRenderer {
             guard let r = s.result else { return nil }
             return draw(w, h) { ctx in
                 ctx.scaleBy(x: Double(w) / Double(r.width), y: Double(h) / Double(r.height))
-                ShapeRenderer.fill(r.shapes, in: ctx)
+                ShapeRenderer.fill(r.shapes, seamStroke: r.seamStroke, in: ctx)
             }
         }
     }

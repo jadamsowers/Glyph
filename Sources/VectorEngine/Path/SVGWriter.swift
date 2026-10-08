@@ -14,25 +14,41 @@ public struct VectorResult: Sendable, Equatable {
     public var shapes: [VectorShape]
     public var svg: String
     public var stats: VectorStats
+    /// Width of the same-color underlay stroke beneath all fills (0 = none); see `ShapeRenderer.fill`.
+    public var seamStroke: Double
 
-    public init(shapes: [VectorShape], width: Int, height: Int, precision: Int) {
+    public init(shapes: [VectorShape], width: Int, height: Int, precision: Int, seamStroke: Double = 0) {
         self.width = width
         self.height = height
         self.shapes = shapes
-        svg = SVGWriter.document(shapes, width: width, height: height, precision: precision)
+        self.seamStroke = seamStroke
+        svg = SVGWriter.document(shapes, width: width, height: height, precision: precision, seamStroke: seamStroke)
         let segments = shapes.reduce(0) { $0 + $1.subpaths.reduce(0) { $0 + $1.segments.count } }
         stats = VectorStats(pathCount: shapes.count, segmentCount: segments, byteCount: svg.utf8.count)
     }
 }
 
 enum SVGWriter {
-    static func document(_ shapes: [VectorShape], width: Int, height: Int, precision: Int) -> String {
-        var out = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 \(width) \(height)\" width=\"\(width)\" height=\"\(height)\" fill-rule=\"evenodd\">\n"
-        for s in shapes {
-            out += "<path fill=\"\(s.color.hex)\" d=\"\(pathData(s.subpaths, precision: precision))\"/>\n"
+    static func document(_ shapes: [VectorShape], width: Int, height: Int, precision: Int, seamStroke: Double = 0) -> String {
+        var out = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 \(width) \(height)\" width=\"\(width)\" height=\"\(height)\" fill-rule=\"evenodd\""
+        guard seamStroke > 0, !shapes.isEmpty else {
+            out += ">\n"
+            for s in shapes {
+                out += "<path fill=\"\(s.color.hex)\" d=\"\(pathData(s.subpaths, precision: precision))\"/>\n"
+            }
+            return out + "</svg>\n"
         }
-        out += "</svg>\n"
-        return out
+        // Each outline is defined once, stroked beneath everything, then filled in paint order.
+        out += " xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n<defs>\n"
+        for (i, s) in shapes.enumerated() {
+            out += "<path id=\"p\(i)\" d=\"\(pathData(s.subpaths, precision: precision))\"/>\n"
+        }
+        let w = format(Int((seamStroke * 100).rounded()), precision: 2)
+        out += "</defs>\n<g fill=\"none\" stroke-width=\"\(w)\" stroke-linejoin=\"round\">\n"
+        for (i, s) in shapes.enumerated() { out += "<use xlink:href=\"#p\(i)\" stroke=\"\(s.color.hex)\"/>\n" }
+        out += "</g>\n"
+        for (i, s) in shapes.enumerated() { out += "<use xlink:href=\"#p\(i)\" fill=\"\(s.color.hex)\"/>\n" }
+        return out + "</svg>\n"
     }
 
     /// Compact path data: absolute moveto, then relative l/c commands. Coordinates are rounded to

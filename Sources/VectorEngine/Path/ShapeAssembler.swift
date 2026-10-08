@@ -11,7 +11,14 @@ enum ShapeAssembler {
         var shapeForColor: [RGBA: Int] = [:]
         for r in order {
             let loops = t.regions[r].loops
-            let chosen = tracing == .stacked ? [loops[t.regions[r].outerIndex]] : loops
+            // Stacked mode relies on later shapes covering holes — but nothing paints a transparent
+            // hole, so holes that border transparency stay cut out.
+            let chosen = tracing == .stacked
+                ? loops.enumerated().filter { k, loop in
+                    k == t.regions[r].outerIndex
+                        || loop.contains { t.chains[$0.chain].left < 0 || t.chains[$0.chain].right < 0 }
+                }.map(\.element)
+                : loops
             let subpaths = chosen.map { subpath($0, curves) }
             let color = regions[r].color
             if tracing == .sharedEdges, let i = shapeForColor[color] {

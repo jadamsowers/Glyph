@@ -40,9 +40,24 @@ public struct InputImage: Sendable {
     }
 
     public static func load(contentsOf url: URL, maxDimension: Int) throws -> InputImage {
+        InputImage(cgImage: try orientedImage(contentsOf: url), maxDimension: maxDimension)
+    }
+
+    /// Decodes the first image in a file at full size, applying its EXIF orientation (portrait
+    /// phone photos are often stored sideways with an orientation tag).
+    public static func orientedImage(contentsOf url: URL) throws -> CGImage {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int
         else { throw VectorEngineError.unreadableImage(url.path) }
-        return InputImage(cgImage: image, maxDimension: maxDimension)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(w, h),
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        else { throw VectorEngineError.unreadableImage(url.path) }
+        return image
     }
 }

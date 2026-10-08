@@ -39,6 +39,7 @@ public struct AdvancedOptions: Sendable, Equatable {
     // Classification
     public var logoMaxColors = 32
     public var logoMaxGradientFraction = 0.25
+    public var logoMaxEdgeFraction = 0.35
     // Palette discovery (logo)
     public var colorMergeDistance = 10.0
     public var minColorShare = 0.001
@@ -127,5 +128,6 @@ extension ClassifierParams {
         blendKeepShare = a.blendKeepShare
         logoMaxColors = a.logoMaxColors
         logoMaxGradientFraction = a.logoMaxGradientFraction
+        logoMaxEdgeFraction = a.logoMaxEdgeFraction
     }
 }

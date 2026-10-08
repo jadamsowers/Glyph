@@ -16,8 +16,19 @@ public enum ShapeRenderer {
         return p
     }
 
-    /// Fills shapes in order with the even-odd rule. `ctx` must use y-down coordinates.
-    public static func fill(_ shapes: [VectorShape], in ctx: CGContext) {
+    /// Fills shapes in order with the even-odd rule. `ctx` must use y-down coordinates. A positive
+    /// `seamStroke` first strokes every outline in its own color beneath all fills, so anti-aliased
+    /// edges between neighbours show shape colors instead of the background.
+    public static func fill(_ shapes: [VectorShape], seamStroke: Double = 0, in ctx: CGContext) {
+        if seamStroke > 0 {
+            ctx.setLineWidth(seamStroke)
+            ctx.setLineJoin(.round)
+            for s in shapes {
+                ctx.addPath(path(for: s))
+                ctx.setStrokeColor(cgColor(s.color))
+                ctx.strokePath()
+            }
+        }
         for s in shapes {
             ctx.addPath(path(for: s))
             ctx.setFillColor(cgColor(s.color))
@@ -25,14 +36,15 @@ public enum ShapeRenderer {
         }
     }
 
-    public static func rasterize(_ shapes: [VectorShape], width: Int, height: Int, antialias: Bool = true, background: RGBA = .clear) -> Bitmap {
+    public static func rasterize(_ shapes: [VectorShape], width: Int, height: Int, antialias: Bool = true,
+                                 background: RGBA = .clear, seamStroke: Double = 0) -> Bitmap {
         Bitmap.render(width: width, height: height) { ctx in
             if background.a > 0 {
                 ctx.setFillColor(cgColor(background))
                 ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
             }
             ctx.setShouldAntialias(antialias)
-            fill(shapes, in: ctx)
+            fill(shapes, seamStroke: seamStroke, in: ctx)
         }
     }
 

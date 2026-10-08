@@ -7,6 +7,8 @@ public struct Analysis: Sendable, Equatable {
     /// The significant colors, most common first, and their share of opaque pixels.
     public var palette: [RGBA]
     public var shares: [Double]
+    /// Share of pixels at hard edges (box-averaged change above 40): logos have few; noise is all edge.
+    public var edgeFraction: Double = 0
 }
 
 public struct ClassifierParams: Sendable, Equatable {
@@ -17,6 +19,7 @@ public struct ClassifierParams: Sendable, Equatable {
     public var blendKeepShare: Double = 0.03
     public var logoMaxColors = 32
     public var logoMaxGradientFraction = 0.25
+    public var logoMaxEdgeFraction = 0.35
     public var sampleDimension = 256
 
     public init() {}
@@ -29,11 +32,12 @@ enum Analyzer {
         let palette = PaletteBuilder.palette(
             from: clusters, total: total, maxColors: p.logoMaxColors + 1, minShare: p.minColorShare,
             blendSlack: p.blendSlack, blendKeepShare: p.blendKeepShare)
-        let gradient = gradientFraction(sample, alphaThreshold: p.alphaThreshold)
-        let isLogo = palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction
+        let (gradient, edges) = changeFractions(sample, alphaThreshold: p.alphaThreshold)
+        let isLogo = palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction && edges < p.logoMaxEdgeFraction
         return Analysis(
             kind: isLogo ? .logo : .photo, significantColors: palette.count, gradientFraction: gradient,
-            palette: palette.map(\.color), shares: palette.map { total > 0 ? Double($0.count) / Double(total) : 0 })
+            palette: palette.map(\.color), shares: palette.map { total > 0 ? Double($0.count) / Double(total) : 0 },
+            edgeFraction: edges)
     }
 
     /// Nearest-neighbor downsample so the long side is at most `maxSide`.
@@ -48,8 +52,13 @@ enum Analyzer {
     /// right or below by 2.5…40 (largest channel). Averaging hides compression noise; the upper
     /// bound excludes hard edges. Flat logos score low; gradients and textures score high.
     static func gradientFraction(_ b: Bitmap, alphaThreshold: UInt8) -> Double {
+        changeFractions(b, alphaThreshold: alphaThreshold).gradient
+    }
+
+    /// (soft-change share, hard-edge share) — see `gradientFraction`; hard edges are changes above 40.
+    static func changeFractions(_ b: Bitmap, alphaThreshold: UInt8) -> (gradient: Double, edges: Double) {
         let w = b.width, h = b.height, d = 3
-        guard w > 2 + d, h > 2 + d else { return 0 }
+        guard w > 2 + d, h > 2 + d else { return (0, 0) }
         var avg = [SIMD3<Int32>](repeating: .zero, count: w * h)
         var solid = [Bool](repeating: false, count: w * h)
         for y in 1..<(h - 1) {
@@ -66,7 +75,7 @@ enum Analyzer {
                 solid[y * w + x] = ok
             }
         }
-        var soft = 0, counted = 0
+        var soft = 0, hard = 0, counted = 0
         for y in 1..<(h - 1 - d) {
             for x in 1..<(w - 1 - d) {
                 let i = y * w + x
@@ -77,9 +86,9 @@ enum Analyzer {
                     return Double(max(abs(v.x), abs(v.y), abs(v.z))) / 9
                 }
                 let m = max(diff(i + d), diff(i + d * w))
-                if m >= 2.5 && m <= 40 { soft += 1 }
+                if m >= 2.5 && m <= 40 { soft += 1 } else if m > 40 { hard += 1 }
             }
         }
-        return counted == 0 ? 0 : Double(soft) / Double(counted)
+        return counted == 0 ? (0, 0) : (Double(soft) / Double(counted), Double(hard) / Double(counted))
     }
 }
