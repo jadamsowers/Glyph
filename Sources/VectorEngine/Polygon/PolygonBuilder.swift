@@ -54,7 +54,8 @@ enum PolygonBuilder {
         return out
     }
 
-    /// Run midpoints, plus turn vertices between two long runs. Open chains keep exact endpoints.
+    /// Run midpoints (plus both ends of flat runs), and turn vertices between two long runs.
+    /// Open chains keep exact endpoints.
     static func densePoints(_ chain: Chain, cornerRunLength: Int) -> [Vec2] {
         var pts = chain.points
         if chain.isClosed {
@@ -73,10 +74,34 @@ enum PolygonBuilder {
         let rs = runs(pts)
         var out: [Vec2] = chain.isClosed ? [] : [pts[0].vec]
         for (k, r) in rs.enumerated() {
-            out.append(pts[r.start].vec + Vec2(Double(r.dx), Double(r.dy)) * (Double(r.length) / 2))
+            let start = pts[r.start].vec, dir = Vec2(Double(r.dx), Double(r.dy))
+            // A flat side: its neighbours step in opposite directions (unlike a staircase diagonal)
+            // and it is much longer than the next parallel runs. A circle's flat top is only ~2.7×
+            // longer than those at any radius, so it isn't mistaken for a side. Along a side the
+            // true edge runs on the pixel boundary, so its ends are sampled too.
+            func run(_ offset: Int) -> Run? {
+                let idx = k + offset
+                if chain.isClosed { return rs[((idx % rs.count) + rs.count) % rs.count] }
+                return idx >= 0 && idx < rs.count ? rs[idx] : nil
+            }
+            let prev = run(-1), next = run(1)
+            let parallel = max(run(-2)?.length ?? 0, run(2)?.length ?? 0)
+            let flat = rs.count >= 4 && r.length >= 2 && Double(r.length) >= 3.5 * Double(parallel)
+                && prev != nil && next != nil && prev!.dx == -next!.dx && prev!.dy == -next!.dy
+            // Where a side runs into a rounded corner, the pixels stay flat for ~√R past the true
+            // tangent point, about one parallel-run length (~0.73·√R) plus a little; inset the end
+            // sample by that. Ends next to a long run already get an exact corner vertex below.
+            let half = Double(r.length) / 2
+            if flat && prev!.length < cornerRunLength {
+                out.append(start + dir * min(half - 0.5, 0.5 + 1.4 * Double(run(-2)?.length ?? 0)))
+            }
+            out.append(start + dir * half)
+            if flat && next!.length < cornerRunLength {
+                out.append(start + dir * (Double(r.length) - min(half - 0.5, 0.5 + 1.4 * Double(run(2)?.length ?? 0))))
+            }
             if k == rs.count - 1 && !chain.isClosed { break }
-            let next = rs[(k + 1) % rs.count]
-            if r.length >= cornerRunLength && next.length >= cornerRunLength {
+            let following = rs[(k + 1) % rs.count]
+            if r.length >= cornerRunLength && following.length >= cornerRunLength {
                 out.append(pts[r.start + r.length].vec)
             }
         }

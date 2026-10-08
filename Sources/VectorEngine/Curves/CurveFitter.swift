@@ -64,25 +64,67 @@ enum CurveFitter {
             if run.lowerBound > 0 { pts[run.lowerBound] = project(pts[run.lowerBound]) }
             if run.upperBound < pts.count - 1 { pts[run.upperBound] = project(pts[run.upperBound]) }
             if run.lowerBound > cursor {
-                out += BezierFit.fit(Array(pts[cursor...run.lowerBound]), leftTangent: cursorTangent,
-                                     rightTangent: -direction, tolerance: p.tolerance)
+                out += fitPiece(Array(pts[cursor...run.lowerBound]), cursorTangent, -direction, p)
             }
             out.append(.line(to: pts[run.upperBound]))
             cursor = run.upperBound
             cursorTangent = direction
         }
         if cursor < pts.count - 1 {
-            out += BezierFit.fit(Array(pts[cursor...]), leftTangent: cursorTangent, rightTangent: endTangent, tolerance: p.tolerance)
+            out += fitPiece(Array(pts[cursor...]), cursorTangent, endTangent, p)
         }
         return out
     }
 
-    /// Runs shorter than this (px) are left to the curve fitter.
-    static let minLineLength = 12.0
+    /// A curved piece between known tangents: a single circular-arc fillet when it fits the points
+    /// within tolerance (crisp rounded corners from few samples), else least-squares Béziers.
+    static func fitPiece(_ pts: [Vec2], _ t1: Vec2, _ t2: Vec2, _ p: CurveParams) -> [PathSegment] {
+        if let fillet = fillet(from: pts[0], t1, to: pts[pts.count - 1], t2),
+           pts.allSatisfy({ distance($0, to: fillet, from: pts[0]) <= p.tolerance })
+        {
+            return [fillet]
+        }
+        return BezierFit.fit(pts, leftTangent: t1, rightTangent: t2, tolerance: p.tolerance)
+    }
 
-    /// Stretches of points that lie on a line: every point within `tolerance` of the chord, at
-    /// least `minLineLength` long, and not bulging (see `bulges`). Longest runs are taken first so
-    /// a run can't start inside an arc and cut across a side. Ascending, sharing at most endpoints.
+    /// The cubic approximating a circular arc that leaves `a` along `t1` and arrives at `b` coming
+    /// from direction `-t2`: handles sit on the tangent lines at (4/3)·tan(θ/4)/tan(θ/2) of each
+    /// leg, θ being the turn. Nil if the tangent lines don't meet ahead of both points.
+    static func fillet(from a: Vec2, _ t1: Vec2, to b: Vec2, _ t2: Vec2) -> PathSegment? {
+        let denom = t1.x * t2.y - t1.y * t2.x
+        guard abs(denom) > 1e-6 else { return nil }
+        // Solve a + t1·u = b + t2·v.
+        let u = ((b.x - a.x) * t2.y - (b.y - a.y) * t2.x) / denom
+        let v = ((b.x - a.x) * t1.y - (b.y - a.y) * t1.x) / denom
+        guard u > 0, v > 0 else { return nil }
+        let turn = acos(max(-1, min(1, t1.dot(-t2))))
+        guard turn > 1e-3, turn < .pi * 0.95 else { return nil }
+        let k = 4.0 / 3.0 * tan(turn / 4) / tan(turn / 2)
+        return .cubic(c1: a + t1 * (u * k), c2: b + t2 * (v * k), to: b)
+    }
+
+    /// Distance from `q` to a cubic segment starting at `start`, by dense sampling.
+    static func distance(_ q: Vec2, to seg: PathSegment, from start: Vec2) -> Double {
+        guard case .cubic(let c1, let c2, let end) = seg else { return q.distance(toSegment: start, seg.end) }
+        var best = Double.infinity, prev = start
+        for i in 1...48 {
+            let pt = BezierFit.point([start, c1, c2, end], Double(i) / 48)
+            best = min(best, q.distance(toSegment: prev, pt))
+            prev = pt
+        }
+        return best
+    }
+
+    /// Exactly collinear runs (pixel-aligned sides) at least this long (px) become lines.
+    static let minExactLineLength = 12.0
+    /// Runs with pixel jitter must be at least this long (px): an arc stays within a third of the
+    /// tolerance over this length only if its radius is ≳ 240 px, and then joins smoothly anyway.
+    static let minLineLength = 24.0
+
+    /// Stretches of points that lie on a line. Candidates are maximal runs within `tolerance` of
+    /// their chord, trimmed of ends that leak into neighbouring arcs; a run is kept if every point
+    /// is within tolerance / 3 of its best-fit line and it is long enough (see above). Longest
+    /// runs are taken first so a run can't cut across a side. Ascending, sharing at most endpoints.
     static func straightRuns(_ pts: [Vec2], tolerance: Double) -> [ClosedRange<Int>] {
         let n = pts.count
         guard n >= 3 else { return [] }
@@ -95,16 +137,70 @@ enum CurveFitter {
             j = max(j, i + 1)
             while j > i + 1 && !fits(i, j) { j -= 1 }
             while j + 1 < n && fits(i, j + 1) { j += 1 }
-            if pts[i].distance(to: pts[j]) >= minLineLength { candidates.append(i...j) }
+            if pts[i].distance(to: pts[j]) >= minExactLineLength, let run = trim(i...j, pts, tolerance: tolerance) {
+                candidates.append(run)
+            }
         }
+        func length(_ r: ClosedRange<Int>) -> Double { pts[r.lowerBound].distance(to: pts[r.upperBound]) }
         var accepted: [ClosedRange<Int>] = []
-        for c in candidates.sorted(by: { pts[$0.lowerBound].distance(to: pts[$0.upperBound]) > pts[$1.lowerBound].distance(to: pts[$1.upperBound]) }) {
-            guard accepted.allSatisfy({ c.lowerBound >= $0.upperBound || c.upperBound <= $0.lowerBound }),
-                  !bulges(pts, c.lowerBound, c.upperBound, tolerance: tolerance)
-            else { continue }
+        for c in candidates.sorted(by: { length($0) > length($1) }) where accepted.allSatisfy({ c.lowerBound >= $0.upperBound || c.upperBound <= $0.lowerBound }) {
             accepted.append(c)
         }
         return accepted.sorted { $0.lowerBound < $1.lowerBound }
+    }
+
+    /// Shrinks a candidate run from whichever end sits off its best-fit line (by more than
+    /// tolerance / 6) — a run found by chord distance leaks into neighbouring arcs, and the leak
+    /// shows at its ends — so lines stop at the true tangent points. Interior jitter (JPEG) up to
+    /// the tolerance is allowed. Nil if what remains isn't a line (see `minLineLength`, `curves`).
+    static func trim(_ run: ClosedRange<Int>, _ pts: [Vec2], tolerance: Double) -> ClosedRange<Int>? {
+        var i = run.lowerBound, j = run.upperBound
+        while j > i {
+            let (c, d) = lineFit(pts, i, j)
+            func off(_ k: Int) -> Double { let v = pts[k] - c; return abs(v.x * d.y - v.y * d.x) }
+            let oi = off(i), oj = off(j)
+            if max(oi, oj) <= tolerance / 6 {
+                let length = pts[i].distance(to: pts[j])
+                let worst = (i...j).map(off).max()!
+                let axisAligned = abs(d.x) < 1e-6 || abs(d.y) < 1e-6
+                let isLine = (length >= minLineLength && !curves(pts, i, j, tolerance: tolerance))
+                    || (axisAligned && worst <= 0.05 && length >= minExactLineLength)
+                return isLine ? i...j : nil
+            }
+            if oi >= oj { i += 1 } else { j -= 1 }
+        }
+        return nil
+    }
+
+    /// Whether a run with enough samples (≥ 8) shows an arc's curvature: fit residual(t) ≈
+    /// α + βt + γt² against the best-fit line, t ∈ [-1, 1]; |γ| approximates the sagitta, which
+    /// pixel jitter barely moves. Sparse runs (straight sides sample few points) are not judged.
+    static func curves(_ pts: [Vec2], _ i: Int, _ j: Int, tolerance: Double) -> Bool {
+        guard j - i + 1 >= 8 else { return false }
+        let (c, d) = lineFit(pts, i, j)
+        let along = (i...j).map { (pts[$0] - c).dot(d) }
+        guard let lo = along.min(), let hi = along.max(), hi > lo else { return false }
+        var s = [Double](repeating: 0, count: 5), r = [Double](repeating: 0, count: 3)
+        for (k, a) in along.enumerated() {
+            let t = 2 * (a - lo) / (hi - lo) - 1
+            let v = pts[i + k] - c
+            let residual = v.x * d.y - v.y * d.x
+            var power = 1.0
+            for e in 0..<5 {
+                s[e] += power
+                if e < 3 { r[e] += residual * power }
+                power *= t
+            }
+        }
+        func det(_ m: [[Double]]) -> Double {
+            m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+                + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+        }
+        // Normal equations for (α, β, γ); γ by Cramer's rule.
+        let dm = det([[s[0], s[1], s[2]], [s[1], s[2], s[3]], [s[2], s[3], s[4]]])
+        guard abs(dm) > 1e-12 else { return false }
+        let gamma = det([[s[0], s[1], r[0]], [s[1], s[2], r[1]], [s[2], s[3], r[2]]]) / dm
+        return abs(gamma) > tolerance / 5
     }
 
     /// Least-squares line through pts[i...j]: centroid and unit direction (pointing from i to j).
@@ -120,19 +216,6 @@ enum CurveFitter {
         var dir = Vec2(cos(angle), sin(angle))
         if dir.dot(pts[j] - pts[i]) < 0 { dir = -dir }
         return (c, dir)
-    }
-
-    /// An arc's middle sits consistently to one side of its best-fit line; a straight (even
-    /// jittery) edge's doesn't. True if the middle half's mean residual exceeds tolerance / 6.
-    static func bulges(_ pts: [Vec2], _ i: Int, _ j: Int, tolerance: Double) -> Bool {
-        let (c, d) = lineFit(pts, i, j)
-        let lo = i + (j - i) / 4, hi = j - (j - i) / 4
-        guard hi > lo else { return false }
-        let mean = (lo...hi).reduce(0.0) { sum, k in
-            let r = pts[k] - c
-            return sum + (r.x * d.y - r.y * d.x)
-        } / Double(hi - lo + 1)
-        return abs(mean) > tolerance / 6
     }
 
     /// Direction leaving the first point, estimated a few points ahead.

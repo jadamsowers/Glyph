@@ -51,7 +51,7 @@ import Testing
 
     // Regression: the straight sides of a rounded rectangle must come out as straight lines,
     // with the corners as curves hugging the true outline.
-    @Test(arguments: [6.0, 12.0, 24.0])
+    @Test(arguments: [6.0, 10.0, 12.0, 24.0])
     func roundedRectangleKeepsStraightSides(radius: Double) throws {
         let b = TestImages.roundedRect(width: 160, height: 100, inset: 20, radius: radius)
         let s = try shared(b)
