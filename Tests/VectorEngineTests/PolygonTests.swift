@@ -56,6 +56,19 @@ import Testing
         for v in poly.polygon { #expect(corners.map { $0.distance(to: v) }.min()! < 1.5) }
     }
 
+    // Regression: small rounded corners must not be "sharpened" into square corners.
+    @Test(arguments: [4.0, 6.0, 9.0])
+    func smallRoundedCornersStayRounded(radius: Double) {
+        let b = TestImages.roundedRect(width: 160, height: 100, inset: 20, radius: radius)
+        let q = Quantizer.logo(b, params: QuantizeParams(kind: .logo, colorCount: 8))
+        let seg = Segmenter.segment(q, params: SegmentParams(speckSize: 4))
+        let r = seg.label(80, 50)
+        let poly = PolygonBuilder.build(Topology.build(seg).chains.first { $0.left == r || $0.right == r }!, params: params)
+        for v in poly.polygon {
+            #expect(TestImages.roundedRectDistance(v, width: 160, height: 100, inset: 20, radius: radius) < 1.0, "\(v)")
+        }
+    }
+
     @Test func circleHasNoCorners() {
         let poly = polygon(around: 20, 20, in: TestImages.circle(size: 40, radius: 12), palette: [TestImages.red, TestImages.white])
         #expect(poly.corners.allSatisfy { !$0 })

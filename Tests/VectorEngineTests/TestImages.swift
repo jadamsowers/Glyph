@@ -114,6 +114,33 @@ enum TestImages {
         }
     }
 
+    /// An anti-aliased red rounded rectangle on white, inset from the image edges.
+    static func roundedRect(width: Int, height: Int, inset: Double, radius: Double) -> Bitmap {
+        Bitmap(width: width, height: height) { x, y in
+            var n = 0
+            for sy in 0..<4 {
+                for sx in 0..<4 {
+                    let p = Vec2(Double(x) + (Double(sx) + 0.5) / 4, Double(y) + (Double(sy) + 0.5) / 4)
+                    if roundedRectSignedDistance(p, width: width, height: height, inset: inset, radius: radius) <= 0 { n += 1 }
+                }
+            }
+            return blend(red, white, Double(n) / 16)
+        }
+    }
+
+    /// Signed distance from `p` to that rounded rectangle's outline (negative inside).
+    static func roundedRectSignedDistance(_ p: Vec2, width: Int, height: Int, inset: Double, radius: Double) -> Double {
+        let cx = Double(width) / 2, cy = Double(height) / 2
+        let hx = cx - inset - radius, hy = cy - inset - radius
+        let qx = abs(p.x - cx) - hx, qy = abs(p.y - cy) - hy
+        let outside = Vec2(max(qx, 0), max(qy, 0)).length
+        return outside + min(max(qx, qy), 0) - radius
+    }
+
+    static func roundedRectDistance(_ p: Vec2, width: Int, height: Int, inset: Double, radius: Double) -> Double {
+        abs(roundedRectSignedDistance(p, width: width, height: height, inset: inset, radius: radius))
+    }
+
     /// Fraction of identical pixels (two fully transparent pixels count as identical).
     static func agreement(_ a: Bitmap, _ b: Bitmap) -> Double {
         precondition(a.width == b.width && a.height == b.height)

@@ -27,7 +27,8 @@ enum PolygonBuilder {
         } else {
             vertices = simplify(Array(dense.indices), dense, tolerance: p.tolerance)
         }
-        (dense, vertices) = sharpenCorners(dense, vertices, isClosed: chain.isClosed, cornerAngle: p.cornerAngle)
+        (dense, vertices) = sharpenCorners(dense, vertices, isClosed: chain.isClosed, cornerAngle: p.cornerAngle,
+                                           straightTolerance: p.straightTolerance)
         let corners = classifyCorners(dense, vertices, isClosed: chain.isClosed, params: p)
         return PolyChain(dense: dense, vertices: vertices, corners: corners, isClosed: chain.isClosed)
     }
@@ -133,7 +134,8 @@ enum PolygonBuilder {
     /// Anti-aliasing and quantization shave sharp corners into a short bevel: two vertices a few
     /// pixels apart between two much longer edges. Replace such a pair with the intersection of
     /// those edges when it is close by and forms a real corner. Open-chain endpoints never move.
-    static func sharpenCorners(_ dense: [Vec2], _ v: [Int], isClosed: Bool, cornerAngle: Double) -> ([Vec2], [Int]) {
+    static func sharpenCorners(_ dense: [Vec2], _ v: [Int], isClosed: Bool, cornerAngle: Double,
+                               straightTolerance: Double) -> ([Vec2], [Int]) {
         var dense = dense, v = v
         var j = isClosed ? 0 : 1
         while true {
@@ -144,10 +146,15 @@ enum PolygonBuilder {
             let a = dense[v[isClosed ? (j + m - 1) % m : j - 1]], b = dense[v[j]]
             let c = dense[v[j + 1]], d = dense[v[(j + 2) % m]]
             let bevel = b.distance(to: c)
+            // A shaved corner is a straight cut; a small rounded corner bulges outward from it.
             if bevel < cornerReach, a.distance(to: b) >= 2.5 * bevel, c.distance(to: d) >= 2.5 * bevel,
+               maxDeviation(dense, from: v[j], to: v[j + 1]) <= straightTolerance / 2,
                let x = intersection(a, b, d, c),
                x.distance(to: b) < cornerReach, x.distance(to: c) < cornerReach,
-               turnDegrees(a, x, d) >= cornerAngle
+               turnDegrees(a, x, d) >= cornerAngle,
+               // Anti-aliasing shaves acute corners noticeably but right angles barely; a longer
+               // bevel on a right-angle-ish turn is a deliberately rounded corner.
+               bevel <= 2.5 || turnDegrees(a, x, d) >= 100
             {
                 let lo = v[j], hi = v[j + 1]
                 dense.replaceSubrange(lo...hi, with: [x])

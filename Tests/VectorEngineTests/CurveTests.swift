@@ -49,6 +49,28 @@ import Testing
         #expect(curve.end == curve.start)
     }
 
+    // Regression: the straight sides of a rounded rectangle must come out as straight lines,
+    // with the corners as curves hugging the true outline.
+    @Test(arguments: [6.0, 12.0, 24.0])
+    func roundedRectangleKeepsStraightSides(radius: Double) throws {
+        let b = TestImages.roundedRect(width: 160, height: 100, inset: 20, radius: radius)
+        let s = try shared(b)
+        let seg = try #require(s.segmentation), lbl = seg.label(80, 50)
+        let i = try #require(s.topology?.chains.firstIndex { $0.left == lbl || $0.right == lbl })
+        let curve = try #require(s.curves)[i]
+        // Each side's straight part: 120 − 2r horizontally, 60 − 2r vertically.
+        let lines = curve.segments.enumerated().compactMap { k, seg -> (Vec2, Vec2)? in
+            guard case .line(let to) = seg else { return nil }
+            return (k == 0 ? curve.start : curve.segments[k - 1].end, to)
+        }
+        let horizontal = lines.filter { abs($0.0.y - $0.1.y) < 0.5 && abs($0.0.x - $0.1.x) >= 0.8 * (120 - 2 * radius) }
+        let vertical = lines.filter { abs($0.0.x - $0.1.x) < 0.5 && abs($0.0.y - $0.1.y) >= 0.8 * (60 - 2 * radius) }
+        #expect(horizontal.count == 2 && vertical.count == 2, "lines: \(lines)")
+        for p in samples(curve.start, curve.segments) {
+            #expect(TestImages.roundedRectDistance(p, width: 160, height: 100, inset: 20, radius: radius) < 1.0, "\(p)")
+        }
+    }
+
     @Test func circleBecomesAFewCubicsAndStaysFaithful() throws {
         let s = try shared(TestImages.circle(size: 48, radius: 16, antialias: true))
         let result = try #require(s.result)
