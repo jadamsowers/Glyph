@@ -150,7 +150,7 @@ final class AppModel {
         guard let svg = result?.svg else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.svg]
-        panel.nameFieldStringValue = (sourceName.isEmpty ? "Vectorized" : sourceName) + ".svg"
+        panel.nameFieldStringValue = (sourceName.isEmpty ? "Glyph" : sourceName) + ".svg"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try svg.write(to: url, atomically: true, encoding: .utf8)

@@ -2,11 +2,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 @main
-struct VectorizerApp: App {
+struct GlyphApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
-        Window("Vectorizer", id: "main") {
+        Window("Glyph", id: "main") {
             ContentView()
                 .environment(model)
                 .frame(minWidth: 900, minHeight: 600)

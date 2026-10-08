@@ -1,0 +1,385 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1588411190BC64AE1287C22E /* VectorEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4F38E98588E47091163A6A47 /* VectorEngine */; };
+		3DF6C216E6158F77EA44CAAD /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB18778819E4627A1086BC18 /* AppModel.swift */; };
+		3F1E4138A2B562646FC7F59D /* GlyphApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */; };
+		4346192C8B5F1BD514400B99 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F27A4A3B54426A7160A07E /* ContentView.swift */; };
+		5DEE2FD7905734C6B33CE588 /* CanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */; };
+		E84F6AD88D47726E77C12A31 /* StageTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90D9B0879853D5B472A6644 /* StageTimelineView.swift */; };
+		EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F14525930CAEF4A7CA1506C /* Assets.xcassets */; };
+		F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F740250A1024E3A4A4CA997D /* InspectorView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		003EFCA627A330BE07EC16A8 /* macos-image-vector */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "macos-image-vector"; path = ..; sourceTree = SOURCE_ROOT; };
+		5F14525930CAEF4A7CA1506C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasView.swift; sourceTree = "<group>"; };
+		7D63D8525429087E12F800F0 /* Glyph.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glyph.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0F27A4A3B54426A7160A07E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlyphApp.swift; sourceTree = "<group>"; };
+		DB18778819E4627A1086BC18 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		E90D9B0879853D5B472A6644 /* StageTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageTimelineView.swift; sourceTree = "<group>"; };
+		F740250A1024E3A4A4CA997D /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		71F9E2F95A8B4184905D2E57 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1588411190BC64AE1287C22E /* VectorEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		30AFE5916CEFD9C3DBF10BFD = {
+			isa = PBXGroup;
+			children = (
+				3211C369E072987F8B6752DF /* Packages */,
+				4890BA3F5A4D22B4CCCE074D /* Resources */,
+				42516F196F78AC7480FBA60D /* Sources */,
+				EE2504723E5E0794AD59BC07 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3211C369E072987F8B6752DF /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				003EFCA627A330BE07EC16A8 /* macos-image-vector */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		42516F196F78AC7480FBA60D /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				DB18778819E4627A1086BC18 /* AppModel.swift */,
+				64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */,
+				B0F27A4A3B54426A7160A07E /* ContentView.swift */,
+				B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */,
+				F740250A1024E3A4A4CA997D /* InspectorView.swift */,
+				E90D9B0879853D5B472A6644 /* StageTimelineView.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		4890BA3F5A4D22B4CCCE074D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				5F14525930CAEF4A7CA1506C /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		EE2504723E5E0794AD59BC07 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7D63D8525429087E12F800F0 /* Glyph.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F54BF7F17AC0A13BBE1E0C12 /* Glyph */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2A20A7C8BD9C10D484F7817D /* Build configuration list for PBXNativeTarget "Glyph" */;
+			buildPhases = (
+				4622FAF7E6A0B93283B9720D /* Sources */,
+				9E6A831CAF90EA33EF6AFEC3 /* Resources */,
+				71F9E2F95A8B4184905D2E57 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Glyph;
+			packageProductDependencies = (
+				4F38E98588E47091163A6A47 /* VectorEngine */,
+			);
+			productName = Glyph;
+			productReference = 7D63D8525429087E12F800F0 /* Glyph.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A7D9785233E3185C5D28B33F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					F54BF7F17AC0A13BBE1E0C12 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = B4AEB906C0C0A894869CFAD8 /* Build configuration list for PBXProject "Glyph" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 30AFE5916CEFD9C3DBF10BFD;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				03BDCA2A41A9C17AE97306B8 /* XCLocalSwiftPackageReference ".." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = EE2504723E5E0794AD59BC07 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F54BF7F17AC0A13BBE1E0C12 /* Glyph */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9E6A831CAF90EA33EF6AFEC3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4622FAF7E6A0B93283B9720D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3DF6C216E6158F77EA44CAAD /* AppModel.swift in Sources */,
+				5DEE2FD7905734C6B33CE588 /* CanvasView.swift in Sources */,
+				4346192C8B5F1BD514400B99 /* ContentView.swift in Sources */,
+				3F1E4138A2B562646FC7F59D /* GlyphApp.swift in Sources */,
+				F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */,
+				E84F6AD88D47726E77C12A31 /* StageTimelineView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		9D2BCD8DF60BD169C2126CA5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Glyph.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Glyph;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jadam.Glyph;
+				PRODUCT_NAME = Glyph;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A56DF4A06646094422E13D47 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Glyph.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Glyph;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jadam.Glyph;
+				PRODUCT_NAME = Glyph;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		CBA873F82BEA70B4FDFA8A42 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CDDEFA0C870A7D2276928E88 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2A20A7C8BD9C10D484F7817D /* Build configuration list for PBXNativeTarget "Glyph" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D2BCD8DF60BD169C2126CA5 /* Debug */,
+				A56DF4A06646094422E13D47 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B4AEB906C0C0A894869CFAD8 /* Build configuration list for PBXProject "Glyph" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CBA873F82BEA70B4FDFA8A42 /* Debug */,
+				CDDEFA0C870A7D2276928E88 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		03BDCA2A41A9C17AE97306B8 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4F38E98588E47091163A6A47 /* VectorEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VectorEngine;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A7D9785233E3185C5D28B33F /* Project object */;
+}

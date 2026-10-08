@@ -8,12 +8,14 @@ struct CanvasView: View {
     @State private var zoom: Double = 1
     @State private var split: Double = 0.5
     @GestureState private var pinch: Double = 1
+    /// Canvas backdrop, independent of the system appearance (persisted per user).
+    @AppStorage("canvasDarkBackground") private var darkBackground = false
 
     var body: some View {
         GeometryReader { geo in
             let stage = model.displayedStage
             ZStack {
-                CheckerboardBackground()
+                CheckerboardBackground(dark: darkBackground)
                 if let state = model.state, let stage {
                     content(stage: stage, state: state, size: geo.size)
                         .scaleEffect(zoom * pinch)
@@ -27,6 +29,7 @@ struct CanvasView: View {
             .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
                 .onEnded { zoom = max(0.25, min(16, zoom * $0.magnification)) })
             .overlay(alignment: .bottomTrailing) { zoomControls.padding(10) }
+            .overlay(alignment: .topTrailing) { backgroundToggle.padding(10) }
             .overlay(alignment: .topLeading) {
                 if let stage { Text(stage.title).font(.headline).padding(6).background(.regularMaterial, in: .rect(cornerRadius: 6)).padding(10) }
             }
@@ -64,6 +67,17 @@ struct CanvasView: View {
         return CGSize(width: max(1, w * s), height: max(1, h * s))
     }
 
+    private var backgroundToggle: some View {
+        Button { darkBackground.toggle() } label: {
+            Image(systemName: darkBackground ? "sun.max" : "moon")
+                .frame(width: 20, height: 20)
+        }
+        .buttonStyle(.borderless)
+        .padding(6)
+        .background(.regularMaterial, in: .rect(cornerRadius: 6))
+        .help(darkBackground ? "Use a light background" : "Use a dark background")
+    }
+
     private var zoomControls: some View {
         HStack(spacing: 4) {
             Button { zoom = max(0.25, zoom / 1.5) } label: { Image(systemName: "minus.magnifyingglass") }
@@ -92,13 +106,19 @@ struct CompareHandle: View {
     }
 }
 
+/// A checkerboard showing transparency, light or dark regardless of the system appearance.
 struct CheckerboardBackground: View {
+    var dark: Bool
+
     var body: some View {
         Canvas { ctx, size in
+            let base = dark ? Color(white: 0.13) : Color(white: 0.98)
+            let alt = dark ? Color(white: 0.19) : Color(white: 0.88)
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(base))
             let cell: CGFloat = 10
             for y in stride(from: 0, to: size.height, by: cell) {
                 for x in stride(from: 0, to: size.width, by: cell) where (Int(x / cell) + Int(y / cell)).isMultiple(of: 2) {
-                    ctx.fill(Path(CGRect(x: x, y: y, width: cell, height: cell)), with: .color(.gray.opacity(0.12)))
+                    ctx.fill(Path(CGRect(x: x, y: y, width: cell, height: cell)), with: .color(alt))
                 }
             }
         }
