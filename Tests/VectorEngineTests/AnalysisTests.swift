@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import VectorEngine
 
@@ -94,5 +95,18 @@ import Testing
         #expect(r.polygon.cornerAngle == 30)
         o.advanced.polygonTolerance = 3
         #expect(o.resolved(with: logo).polygon.tolerance == 3)
+    }
+}
+
+extension AnalysisTests {
+    // Regression (user report): a UI screenshot — flat panels, anti-aliased text — is not a photo.
+    // Text halos look like soft change unless soft change is required away from hard edges.
+    @Test func textHeavyScreenshotIsLogo() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/inspector.png")
+        let image = Bitmap(cgImage: try InputImage.orientedImage(contentsOf: url))
+        let a = analyze(image)
+        #expect(a.kind == .logo, "gradient \(a.gradientFraction), colors \(a.significantColors), edges \(a.edgeFraction)")
+        #expect(a.gradientFraction < 0.25)        // clearly under the 0.35 cut-off (photos score ≥ 0.65)
+        #expect(a.significantColors >= 8)         // panels and swatches are real colors
     }
 }

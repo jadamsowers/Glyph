@@ -1,3 +1,4 @@
+import simd
 public struct QuantizeParams: Sendable, Equatable {
     public var kind: ImageKind
     public var colorCount: Int
@@ -34,7 +35,69 @@ enum Quantizer {
         let chosen = PaletteBuilder.palette(
             from: clusters, total: total, maxColors: p.colorCount, minShare: p.minColorShare,
             blendSlack: p.blendSlack, blendKeepShare: p.blendKeepShare)
-        return assign(bitmap, palette: chosen.map(\.color), alphaThreshold: p.alphaThreshold)
+        return refineBlends(assign(bitmap, palette: chosen.map(\.color), alphaThreshold: p.alphaThreshold), bitmap)
+    }
+
+    /// Second pass for anti-aliased edges: a pixel whose raw color is a mix (see
+    /// `PaletteBuilder.isBlend`) of two *other* palette colors present in its 3×3 neighbourhood
+    /// joins the nearer of those two — not some third color that is merely numerically nearest,
+    /// which would leave a thin band of the wrong region along the edge. Pixels that match their
+    /// palette color closely (≤ 4 per channel) are never changed. Repeats until stable (at most
+    /// `maxPasses`), peeling bands wider than a pixel — e.g. anti-aliasing ramps after upscaling —
+    /// from both sides toward the true edge.
+    static func refineBlends(_ q: QuantizedImage, _ bitmap: Bitmap, slack: Double = 0.15, maxPasses: Int = 12) -> QuantizedImage {
+        var current = q
+        for _ in 0..<maxPasses {
+            let next = refineBlendsOnce(current, bitmap, slack: slack)
+            if next.indices == current.indices { break }
+            current = next
+        }
+        return current
+    }
+
+    static func refineBlendsOnce(_ q: QuantizedImage, _ bitmap: Bitmap, slack: Double) -> QuantizedImage {
+        let w = q.width, h = q.height
+        guard q.palette.count >= 3 else { return q }
+        let labs = q.palette.map { Lab($0) }
+        func rgb(_ c: RGBA) -> SIMD3<Double> { SIMD3(Double(c.r), Double(c.g), Double(c.b)) }
+        let pal = q.palette.map(rgb)
+        var out = q.indices
+        for y in 0..<h {
+            for x in 0..<w {
+                let i = y * w + x, own = Int(q.indices[i])
+                guard own >= 0 else { continue }
+                let c = bitmap.pixels[i]
+                let pc = q.palette[own]
+                if max(abs(Int(c.r) - Int(pc.r)), abs(Int(c.g) - Int(pc.g)), abs(Int(c.b) - Int(pc.b))) <= 4 { continue }
+                var around = Set<Int>()
+                for dy in -1...1 {
+                    for dx in -1...1 where (dx, dy) != (0, 0) {
+                        let nx = x + dx, ny = y + dy
+                        guard nx >= 0, ny >= 0, nx < w, ny < h else { continue }
+                        let k = Int(q.indices[ny * w + nx])
+                        if k >= 0 && k != own { around.insert(k) }
+                    }
+                }
+                guard around.count >= 2 else { continue }
+                let v = rgb(c)
+                var best: (Int, Double)?
+                let candidates = Array(around)
+                for a in candidates.indices {
+                    for b in candidates.indices where b > a {
+                        let pa = pal[candidates[a]], pb = pal[candidates[b]]
+                        let direct = simd_distance(pa, pb)
+                        guard direct > 0, simd_distance(pa, v) + simd_distance(v, pb) <= direct * (1 + slack) else { continue }
+                        let lab = Lab(c)
+                        for k in [candidates[a], candidates[b]] {
+                            let d = labs[k].distance(to: lab)
+                            if best == nil || d < best!.1 { best = (k, d) }
+                        }
+                    }
+                }
+                if let (k, _) = best { out[i] = Int32(k) }
+            }
+        }
+        return QuantizedImage(width: w, height: h, palette: q.palette, indices: out)
     }
 
     /// Maps each opaque pixel to the perceptually nearest palette color.

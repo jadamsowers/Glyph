@@ -54,6 +54,45 @@ import Testing
         #expect(logo(b).palette.count == 3)
     }
 
+    // Regression: a small flat gray panel between black and white sits on their blend line but is a
+    // real color (it has flat interior pixels; anti-aliasing blends don't).
+    @Test func smallFlatMidtonePanelIsARealColor() {
+        let gray = RGBA(60, 60, 62)
+        let b = Bitmap(width: 100, height: 100) { x, y in
+            if (10..<22).contains(x) && (10..<22).contains(y) { return gray }   // 1.4% share
+            if (40..<90).contains(x) && (40..<60).contains(y) { return TestImages.white }
+            return TestImages.black
+        }
+        #expect(logo(b).palette.contains(gray))
+    }
+
+    // Regression (UI screenshot): a dark panel a few ΔE lighter than the background is a real,
+    // flat color — not noise to be merged into the background.
+    @Test func subtleFlatColorsStaySeparate() {
+        let bg = RGBA(30, 30, 30), panel = RGBA(42, 42, 44)
+        let b = Bitmap(width: 120, height: 80) { x, y in (20..<100).contains(x) && (15..<65).contains(y) ? panel : bg }
+        #expect(Lab(bg).distance(to: Lab(panel)) < 10)   // within the merge distance
+        #expect(Set(logo(b).palette) == [bg, panel])
+    }
+
+    // Regression: an anti-aliased pixel between a dark stroke and a light fill must join one of
+    // those two, not a third palette color that happens to be numerically nearer.
+    @Test func blendPixelsJoinTheColorsTheyBlend() {
+        let stroke = RGBA(80, 80, 82), fill = RGBA(204, 204, 210), otherFill = RGBA(178, 178, 184)
+        let blend = RGBA(170, 170, 175)   // ~73% of the way from stroke to fill: nearest is otherFill
+        let b = Bitmap(width: 30, height: 10) { x, _ in
+            if x < 10 { return otherFill }   // elsewhere in the image
+            if x < 18 { return stroke }
+            if x == 18 { return blend }
+            return fill
+        }
+        let q = Quantizer.assign(b, palette: [stroke, fill, otherFill], alphaThreshold: 128)
+        let refined = Quantizer.refineBlends(q, b)
+        #expect(q.indices[18] == 2)                       // plain nearest-color picks the third color…
+        #expect([0, 1].contains(refined.indices[18]))     // …refinement picks stroke or fill
+        #expect(refined.indices[5] == 2)                  // real otherFill pixels are untouched
+    }
+
     @Test func fullyTransparentImageHasEmptyPalette() {
         let q = logo(Bitmap(width: 4, height: 4) { _, _ in .clear })
         #expect(q.palette.isEmpty && q.indices.allSatisfy { $0 == -1 })

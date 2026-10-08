@@ -24,6 +24,7 @@ import Testing
         #expect(input.upscale == 1)
         let s = try Pipeline.run(input: input, options: Options())
         #expect(s.analysis?.isPixelArt == true)
+        #expect(s.analysis?.kind == .logo)
         let r = try #require(s.result)
         let raster = ShapeRenderer.rasterize(r.shapes, width: b.width, height: b.height, antialias: false)
         #expect(TestImages.agreement(raster, b) == 1)

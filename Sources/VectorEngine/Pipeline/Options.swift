@@ -59,7 +59,7 @@ public struct AdvancedOptions: Sendable, Equatable {
     public var alphaThreshold: UInt8 = 128
     // Classification
     public var logoMaxColors = 32
-    public var logoMaxGradientFraction = 0.25
+    public var logoMaxGradientFraction = 0.35
     public var logoMaxEdgeFraction = 0.35
     // Palette discovery (logo)
     public var colorMergeDistance = 10.0

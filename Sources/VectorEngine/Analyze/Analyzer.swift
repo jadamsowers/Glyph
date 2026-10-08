@@ -1,3 +1,4 @@
+import simd
 public struct Analysis: Sendable, Equatable {
     public var kind: ImageKind
     /// Distinct colors after merging near-duplicates and ignoring anti-aliasing blends.
@@ -21,7 +22,7 @@ public struct ClassifierParams: Sendable, Equatable {
     public var blendSlack: Double = 0.15
     public var blendKeepShare: Double = 0.03
     public var logoMaxColors = 32
-    public var logoMaxGradientFraction = 0.25
+    public var logoMaxGradientFraction = 0.35
     public var logoMaxEdgeFraction = 0.35
     public var sampleDimension = 256
 
@@ -36,11 +37,13 @@ enum Analyzer {
             from: clusters, total: total, maxColors: p.logoMaxColors + 1, minShare: p.minColorShare,
             blendSlack: p.blendSlack, blendKeepShare: p.blendKeepShare)
         let (gradient, edges) = changeFractions(sample, alphaThreshold: p.alphaThreshold)
-        let isLogo = palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction && edges < p.logoMaxEdgeFraction
+        let pixelArt = looksLikePixelArt(bitmap, alphaThreshold: p.alphaThreshold)
+        // Pixel art is flat by construction, however dense its edges.
+        let isLogo = pixelArt || (palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction && edges < p.logoMaxEdgeFraction)
         return Analysis(
             kind: isLogo ? .logo : .photo, significantColors: palette.count, gradientFraction: gradient,
             palette: palette.map(\.color), shares: palette.map { total > 0 ? Double($0.count) / Double(total) : 0 },
-            edgeFraction: edges, isPixelArt: looksLikePixelArt(bitmap, alphaThreshold: p.alphaThreshold))
+            edgeFraction: edges, isPixelArt: pixelArt)
     }
 
     /// Whether the image's edges are hard and unblended. Judged only at "stair" pixels — edge
@@ -88,9 +91,10 @@ enum Analyzer {
         return Bitmap(width: w, height: h) { x, y in b[x * b.width / w, y * b.height / h] }
     }
 
-    /// Share of opaque pixels whose 3×3 box-averaged color differs from the box 3 px to the
-    /// right or below by 2.5…40 (largest channel). Averaging hides compression noise; the upper
-    /// bound excludes hard edges. Flat logos score low; gradients and textures score high.
+    /// Share of opaque pixels showing shading or texture rather than flat color: shading is a
+    /// 3×3 box-averaged change of 2.5…40 over 3 px that is spread out (the pixel's own 3×3 range
+    /// is below that change), texture a moderate raw range (16…64) without hard edges. Flat logos,
+    /// text and UI score low; photos and gradients high.
     static func gradientFraction(_ b: Bitmap, alphaThreshold: UInt8) -> Double {
         changeFractions(b, alphaThreshold: alphaThreshold).gradient
     }
@@ -115,6 +119,25 @@ enum Analyzer {
                 solid[y * w + x] = ok
             }
         }
+        // Raw contrast within each pixel's 3×3 neighbourhood. Shading spreads its change over
+        // several pixels, so the immediate range is smaller than the change over 3 px; a low-
+        // contrast step edge (UI panels) or a text halo concentrates it in one step. Texture
+        // (grain, foliage) is moderate raw range without hard edges.
+        var localRange = [Int](repeating: 0, count: w * h)
+        for y in 1..<(h - 1) {
+            for x in 1..<(w - 1) {
+                var lo = SIMD3<Int32>(repeating: 255), hi = SIMD3<Int32>(repeating: 0)
+                for dy in -1...1 {
+                    for dx in -1...1 {
+                        let p = b[x + dx, y + dy]
+                        let v = SIMD3(Int32(p.r), Int32(p.g), Int32(p.b))
+                        lo = simd_min(lo, v); hi = simd_max(hi, v)
+                    }
+                }
+                let r = hi &- lo
+                localRange[y * w + x] = Int(max(r.x, r.y, r.z))
+            }
+        }
         var soft = 0, hard = 0, counted = 0
         for y in 1..<(h - 1 - d) {
             for x in 1..<(w - 1 - d) {
@@ -126,7 +149,10 @@ enum Analyzer {
                     return Double(max(abs(v.x), abs(v.y), abs(v.z))) / 9
                 }
                 let m = max(diff(i + d), diff(i + d * w))
-                if m >= 2.5 && m <= 40 { soft += 1 } else if m > 40 { hard += 1 }
+                let range = Double(localRange[i])
+                let shading = m >= 2.5 && m <= 40 && range <= 0.85 * m + 3
+                let texture = m <= 40 && range > 16 && range <= 64
+                if shading || texture { soft += 1 } else if m > 40 { hard += 1 }
             }
         }
         return counted == 0 ? (0, 0) : (Double(soft) / Double(counted), Double(hard) / Double(counted))
