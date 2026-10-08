@@ -73,6 +73,7 @@ enum PaletteBuilder {
     {
         guard total > 0 else { return [] }
         var chosen: [ColorCluster] = []
+        var shades: [ColorCluster] = []   // near-duplicates of a chosen color, considered last
         for c in clusters {
             if chosen.count >= maxColors { break }
             let share = Double(c.count) / Double(total)
@@ -81,11 +82,18 @@ enum PaletteBuilder {
             // (a gray panel between black and white is real; the gray fringe around text isn't).
             let mostlyFlat = c.flatCount * 3 >= c.count
             if share < blendKeepShare && !mostlyFlat && isBlend(c.color, of: chosen, slack: blendSlack) { continue }
+            // Perceptually distinct colors first: a second shade of blue must not take the slot
+            // of a less common red.
+            if chosen.contains(where: { $0.lab.distance(to: c.lab) < distinctDistance }) { shades.append(c); continue }
             chosen.append(c)
         }
+        for c in shades where chosen.count < maxColors { chosen.append(c) }
         if chosen.isEmpty, let first = clusters.first { chosen = [first] }
         return chosen
     }
+
+    /// Colors closer than this (ΔE) to an already-chosen one are shades, chosen after distinct colors.
+    static let distinctDistance = 15.0
 
     /// Whether `c` looks like a mix of two of `colors`: the RGB path a → c → b is at most
     /// (1 + slack) times the direct distance a → b. The slack scales with the colors' separation,

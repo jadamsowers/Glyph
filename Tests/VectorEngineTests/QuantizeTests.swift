@@ -93,6 +93,36 @@ import Testing
         #expect(refined.indices[5] == 2)                  // real otherFill pixels are untouched
     }
 
+    /// White, blue, red and black, where the blue area has two slightly different flat shades
+    /// (both more common than the red) — like a logo exported with a subtle blue variation.
+    static func fourColorLogo() -> Bitmap {
+        let blue = RGBA(30, 70, 190), blue2 = RGBA(38, 80, 200), red = RGBA(210, 30, 40)
+        return Bitmap(width: 100, height: 100) { x, y in
+            if (10..<50).contains(x) && (10..<50).contains(y) { return blue }
+            if (50..<90).contains(x) && (10..<50).contains(y) { return blue2 }
+            if (20..<35).contains(x) && (60..<75).contains(y) { return red }
+            if (60..<90).contains(x) && (80..<84).contains(y) { return TestImages.black }
+            return TestImages.white
+        }
+    }
+
+    // Regression (user report): a white, blue, red and black logo came out with blue shades but
+    // no red. Distinct colors must be chosen before near-duplicate shades fill remaining slots.
+    @Test func distinctColorsBeatNearDuplicateShades() {
+        let b = Self.fourColorLogo()
+        let palette = logo(b, colors: 4).palette.map { Lab($0) }
+        for c in [TestImages.white, RGBA(30, 70, 190), RGBA(210, 30, 40), TestImages.black] {
+            #expect(palette.contains { $0.distance(to: Lab(c)) < 8 }, "missing \(c.hex)")
+        }
+    }
+
+    @Test func autoLogoPaletteIncludesTheRed() throws {
+        let s = try Pipeline.run(input: InputImage(bitmap: Self.fourColorLogo()), options: Options())
+        let palette = try #require(s.quantized).palette.map { Lab($0) }
+        #expect(palette.contains { $0.distance(to: Lab(RGBA(210, 30, 40))) < 8 })
+        #expect(palette.contains { $0.distance(to: Lab(TestImages.black)) < 8 })
+    }
+
     @Test func fullyTransparentImageHasEmptyPalette() {
         let q = logo(Bitmap(width: 4, height: 4) { _, _ in .clear })
         #expect(q.palette.isEmpty && q.indices.allSatisfy { $0 == -1 })
