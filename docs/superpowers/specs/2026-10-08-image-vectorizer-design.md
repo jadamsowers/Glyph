@@ -36,21 +36,22 @@ Each stage returns an immutable value retained for display.
 | 2 | Quantize | Dominant-color palette clustering in CIELAB; anti-aliased pixels snapped to nearest palette color | k-means (k-means++ init) in CIELAB, k = color count | Posterized bitmap + swatches |
 | 3 | Segment | Connected-component labeling (4-connectivity); regions smaller than `speckSize` px merged into most similar adjacent region (by Lab distance), iterated | same | Regions in random false colors |
 | 4 | Contours | Pixel-edge boundaries. Shared mode: planar edge graph (each boundary between two regions — or region and image border — is one chain between junction vertices). Stacked mode: one outer loop (+ holes) per region | same | Staircase outlines |
-| 5 | Polygon | Corner detection + optimal polygon approximation (potrace-inspired: straight-path detection, penalty-minimizing polygon) on each chain/loop. Junction vertices and image-border corners are fixed | same, looser tolerance | Polygons with vertex dots |
-| 6 | Curves | Detect corners by angle threshold (`cornerThreshold`); fit cubic Béziers to smooth runs (alpha-based smoothing as in potrace, optional curve optimization merging segments within `curveTolerance`) | same | Curves with control handles |
-| 7 | SVG | One `<path>` per region (shared mode: region outline assembled from shared edge chains, reversing as needed; holes via `fill-rule="evenodd"`). Relative commands, coordinates rounded to `precision` decimals. Stacked mode: paths sorted by area descending; each region emitted as its outer boundary only (see notes) | same | Final render + byte/path/node counts |
+| 5 | Polygon | Per chain: dense points = midpoint of every straight staircase run, plus turn vertices between two runs ≥ `cornerRunLength` (true corners); Douglas–Peucker with `polygonTolerance` (endpoints pinned); short anti-aliasing bevels (< 8 px between much longer edges) are rebuilt into sharp corners; a vertex is a corner if its turn ≥ `cornerAngle` and at least one adjacent edge is straight (bulge ≤ max(`straightTolerance`, 5% of its length)), or its turn ≥ 150° | same, looser tolerance | Polygons with vertex dots (corners vs smooth) |
+| 6 | Curves | Between consecutive corners: a straight line if the dense points stay within `straightTolerance`, otherwise least-squares cubic Bézier fitting (Schneider) to the dense points within `curveTolerance`. Corner-free closed loops are split at two smooth joins with continuous tangents | same | Curves with control handles |
+| 7 | SVG | Shared mode: one `<path>` per color (same-colored regions merged; outlines assembled from shared edge chains, reversing as needed; holes via `fill-rule="evenodd"`). Relative commands, coordinates rounded to `precision` decimals. Stacked mode: one `<path>` per region, outer boundary only, sorted by outer-boundary area descending (see notes) | same | Final render + byte/path/node counts |
 
 Notes:
-- All tracing is implemented in original Swift code. Potrace is used only as a source of published ideas, not code.
-- Stacked mode avoids seams by emitting each region as its outer boundary only — holes are not cut out, because the regions occupying them are smaller and therefore painted later on top. Shapes are emitted largest-area-first. (A hole containing a region that is *larger* than the enclosing one cannot occur, since the enclosing region's outer boundary area exceeds it.)
+- All tracing is implemented in original Swift code; no third-party tracing code (no potrace/GPL).
+- Stacked mode avoids seams by emitting each region as its outer boundary only — holes are not cut out, because the regions occupying them are smaller and therefore painted later on top. Shapes are emitted by outer-boundary area, largest first — not by pixel count: a thin ring around a large disk has fewer pixels than the disk but must be painted before it. (A hole containing a region that is *larger* than the enclosing one cannot occur, since the enclosing region's outer boundary area exceeds it.)
 - Large images: downscaled to `maxProcessingDimension` (default 2000 px long side) for processing; SVG `viewBox` uses original dimensions via scaling of output coordinates.
 - Transparency: fully transparent pixels form a "background" label that is never emitted; alpha < threshold treated as transparent.
 
 ### Classification heuristic (stage 0)
-- `distinctColors`: colors (after 5-bit-per-channel bucketing) covering ≥ 0.1% of pixels.
-- `gradientFraction`: fraction of pixels with small-but-nonzero local gradient (smooth shading).
-- Logo if `distinctColors ≤ 32` and `gradientFraction < 0.25`; else Photo. Thresholds live in Options.Advanced.
-- Default color count = number of significant colors (logo, clamped 2…32) or 16 (photo).
+Computed on a nearest-neighbor sample (long side ≤ 256 px):
+- `significantColors`: 5-bit-per-channel buckets merged greedily into clusters (Lab distance < 10); clusters with ≥ 0.1% of opaque pixels count, except small ones (< 3%) that look like a mix of two already-chosen colors — RGB path a→c→b at most 1.15× the direct distance — which catches anti-aliasing and JPEG chroma fringes.
+- `gradientFraction`: share of pixels whose 3×3 box-averaged color differs from the one 3 px right/below by 2.5–40 (max channel) — above compression noise, below hard edges.
+- Logo if `significantColors ≤ 32` and `gradientFraction < 0.25`; else Photo. Thresholds live in AdvancedOptions.
+- Default color count = significant colors (logo, clamped 2…32) or 16 (photo).
 
 ## 4. API
 
@@ -130,8 +131,15 @@ The app's Xcode project is generated by XcodeGen from a checked-in `App/project.
 - SVG well-formedness: parse with `XMLParser`.
 - CLI smoke test on a sample image.
 
+Tests use swift-testing and require full Xcode (Command Line Tools alone cannot run them).
+
 ## 9. Error handling
 
 - Unreadable/unsupported file → inline error in app; CLI exits 1 with message.
 - Degenerate inputs (1×1, single color, fully transparent) → valid SVG (single rect path or empty).
 - Engine never crashes on input; internal invariants checked with `assert` in debug.
+
+## 10. Delivery
+
+- Plan 1: `VectorEngine` + `vectorize` CLI (fully testable with `swift test`).
+- Plan 2: the SwiftUI app, written after Plan 1 lands, against the proven engine API.
