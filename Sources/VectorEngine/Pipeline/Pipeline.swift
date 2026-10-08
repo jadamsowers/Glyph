@@ -113,6 +113,27 @@ public enum Pipeline {
         return state
     }
 
+    /// Runs the pipeline off the caller's task, yielding each stage as it completes.
+    /// Cancelling the consuming task (or dropping the stream) cancels the run between stages.
+    public static func stream(input: InputImage, options: Options, reusing previous: PipelineState? = nil)
+        -> AsyncThrowingStream<StageEvent, Error>
+    {
+        AsyncThrowingStream { continuation in
+            let task = Task.detached(priority: .userInitiated) {
+                do {
+                    _ = try run(input: input, options: options, reusing: previous) { event in
+                        try Task.checkCancellation()
+                        continuation.yield(event)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     /// Raw value of the first stage that must be recomputed (`Stage.allCases.count` = none).
     static func firstStageToCompute(previous p: PipelineState, input: InputImage, options: Options) -> Int {
         guard p.input.id == input.id, let analysis = p.analysis, let oldResolved = p.resolved,
