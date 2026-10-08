@@ -14,7 +14,10 @@ struct InspectorView: View {
                               systemImage: analysis.kind == .logo ? "seal" : "photo")
                             .font(.headline)
                         Spacer()
-                        Text("\(analysis.significantColors) colors").foregroundStyle(.secondary)
+                        // The palette actually used (photos quantize to more colors than the
+                        // classifier's count of distinct flat colors).
+                        Text("\(model.state?.quantized?.palette.count ?? analysis.significantColors) colors")
+                            .foregroundStyle(.secondary)
                     }
                     PaletteStrip(colors: model.state?.quantized?.palette ?? analysis.palette)
                 } else {
@@ -49,7 +52,7 @@ struct InspectorView: View {
                 AutoSlider(title: "Smoothness", value: $model.options.smoothness,
                            auto: autoSmoothness, range: 0...1, step: 0.05, format: "%.2f")
                 AutoSlider(title: "Speck size", value: $model.options.speckSize.asDouble,
-                           auto: Double(model.state?.resolved?.segment.speckSize ?? 4), range: 0...200, step: 1, format: "%.0f px")
+                           auto: autoSpeck, range: 0...200, step: 1, format: "%.0f px")
             }
 
             Section {
@@ -82,6 +85,12 @@ struct InspectorView: View {
     private var isLogo: Bool { (model.state?.resolved?.kind ?? .logo) == .logo }
     private var autoDetail: Double { isLogo ? 0.6 : 0.3 }
     private var autoSmoothness: Double { isLogo ? 0.5 : 0.6 }
+    /// The resolved speck size is in processing pixels; show it in original pixels.
+    private var autoSpeck: Double {
+        guard let state = model.state, let resolved = state.resolved else { return 4 }
+        let f = Double(state.input.upscale)
+        return (Double(resolved.segment.speckSize) / (f * f)).rounded()
+    }
 }
 
 /// A slider bound to an optional value: nil means "auto" (shows the auto value, dimmed).
@@ -105,7 +114,10 @@ struct AutoSlider: View {
                     .monospacedDigit()
                     .foregroundStyle(value == nil ? .secondary : .primary)
             }
-            Slider(value: Binding(get: { value ?? auto }, set: { value = $0 }), in: range, step: step)
+            // No `step:` — macOS would draw a tick mark per step (hundreds on wide ranges);
+            // snap to the step in the binding instead.
+            Slider(value: Binding(get: { value ?? auto }, set: { value = min(range.upperBound, max(range.lowerBound, ($0 / step).rounded() * step)) }),
+                   in: range)
                 .opacity(value == nil ? 0.6 : 1)
         }
     }
