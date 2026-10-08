@@ -5,3 +5,5 @@ xcuserdata/
 samples/
 out/
 .superpowers/
+App/build/
+App/build.log

@@ -1,0 +1,30 @@
+name: Vectorizer
+options:
+  bundleIdPrefix: com.jadam
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  VectorEngine:
+    path: ..
+targets:
+  Vectorizer:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    dependencies:
+      - package: VectorEngine
+        product: VectorEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jadam.Vectorizer
+        PRODUCT_NAME: Vectorizer
+        SWIFT_VERSION: "6.0"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Vectorizer
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.graphics-design
+        CODE_SIGN_ENTITLEMENTS: Vectorizer.entitlements
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: YES
