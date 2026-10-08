@@ -58,7 +58,7 @@ public struct PipelineState: Sendable {
         switch stage {
         case .analyze:
             analysis = p.analysis
-            resolved = options.resolved(with: p.analysis!).adjusted(forUpscale: input.upscale)
+            resolved = Pipeline.resolve(options, p.analysis!, input)
         case .prefilter: prefiltered = p.prefiltered
         case .quantize: quantized = p.quantized
         case .segment: segmentation = p.segmentation
@@ -139,9 +139,27 @@ public enum Pipeline {
         guard p.input.id == input.id, let analysis = p.analysis, let oldResolved = p.resolved,
               ClassifierParams(p.options.advanced) == ClassifierParams(options.advanced)
         else { return 0 }
-        let changed = options.resolved(with: analysis).adjusted(forUpscale: input.upscale).firstChangedStage(comparedTo: oldResolved)?.rawValue ?? Stage.allCases.count
+        let changed = resolve(options, analysis, input).firstChangedStage(comparedTo: oldResolved)?.rawValue ?? Stage.allCases.count
         let missing = Stage.allCases.first { !p.has($0) }?.rawValue ?? Stage.allCases.count
         return min(changed, missing)
+    }
+
+    /// Options resolved for this input: auto choices, then upscale and display-size adaptation.
+    static func resolve(_ options: Options, _ analysis: Analysis, _ input: InputImage) -> ResolvedOptions {
+        var r = options.resolved(with: analysis).adjusted(forUpscale: input.upscale)
+            .adjusted(forDisplay: options.displaySize, longSide: max(input.originalWidth, input.originalHeight))
+        let longOriginal = Double(max(input.originalWidth, input.originalHeight))
+        let display = options.displaySize.map { min(Double($0), longOriginal) } ?? longOriginal
+        r.curve.displayScale = display / Double(max(input.bitmap.width, input.bitmap.height))
+        return r
+    }
+
+    /// Per-chain tolerance multipliers from the contrast across each chain (nil when disabled).
+    static func multipliers(_ s: PipelineState, reference: Double?) -> [Double]? {
+        guard let reference else { return nil }
+        return Perceptual.chainColors(s.topology!, s.segmentation!.regions).map {
+            Perceptual.toleranceMultiplier($0.0, $0.1, reference: reference)
+        }
     }
 
     static func compute(_ stage: Stage, _ s: inout PipelineState) {
@@ -151,7 +169,7 @@ public enum Pipeline {
             // Only the original pixels can show pixel art; an upscaled input was already judged not to be.
             if s.input.upscale > 1 { a.isPixelArt = false }
             s.analysis = a
-            s.resolved = s.options.resolved(with: a).adjusted(forUpscale: s.input.upscale)
+            s.resolved = resolve(s.options, a, s.input)
         case .prefilter:
             s.prefiltered = Prefilter.apply(s.input.bitmap, params: s.resolved!.prefilter)
         case .quantize:
@@ -161,18 +179,28 @@ public enum Pipeline {
         case .contours:
             s.topology = Topology.build(s.segmentation!)
         case .polygon:
-            s.polygons = PolygonBuilder.build(s.topology!, params: s.resolved!.polygon)
+            let p = s.resolved!.polygon
+            s.polygons = PolygonBuilder.build(s.topology!, params: p,
+                                              multipliers: multipliers(s, reference: p.contrastReference))
         case .curves:
-            s.curves = CurveFitter.fit(s.polygons!, params: s.resolved!.curve, chains: s.topology!.chains,
-                                       regionSizes: s.segmentation!.regions.map(\.pixelCount))
+            let p = s.resolved!.curve
+            let curves = CurveFitter.fit(s.polygons!, params: p, chains: s.topology!.chains,
+                                         regionSizes: s.segmentation!.regions.map(\.pixelCount),
+                                         multipliers: multipliers(s, reference: p.contrastReference))
+            let colors = Perceptual.chainColors(s.topology!, s.segmentation!.regions)
+            let visibility = colors.map { Perceptual.visibility($0.0, $0.1, reference: p.contrastReference ?? 30) }
+            s.curves = Simplifier.reduce(curves, visibility: visibility, params: p)
         case .svg:
             let r = s.resolved!, input = s.input
             let shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
                 .map { $0.scaled(input.scaleX, input.scaleY) }
             // Stacked output gets a one-processing-pixel underlay stroke to hide sibling seams.
             let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY) : 0
-            s.result = VectorResult(shapes: shapes, width: input.originalWidth, height: input.originalHeight,
-                                    precision: r.output.precision, seamStroke: seam)
+            var result = VectorResult(shapes: shapes, width: input.originalWidth, height: input.originalHeight,
+                                      precision: r.output.precision, seamStroke: seam)
+            result.stats.visibleDifference = Perceptual.visibleDifference(
+                shapes, outputWidth: input.originalWidth, outputHeight: input.originalHeight, reference: s.prefiltered!)
+            s.result = result
         }
     }
 }

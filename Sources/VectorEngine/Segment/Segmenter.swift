@@ -21,6 +21,9 @@ public struct Segmentation: Sendable, Equatable {
 public struct SegmentParams: Sendable, Equatable {
     /// Regions with fewer pixels than this are merged into their most similar neighbor.
     public var speckSize: Int
+    /// When set, a speck whose color is close to its most similar neighbour (ΔE below this) may be
+    /// up to 4× larger and still merge — faint specks are invisible at sizes where vivid ones aren't.
+    public var contrastReference: Double? = nil
 
     public init(speckSize: Int) { self.speckSize = speckSize }
 }
@@ -28,7 +31,8 @@ public struct SegmentParams: Sendable, Equatable {
 enum Segmenter {
     static func segment(_ q: QuantizedImage, params: SegmentParams) -> Segmentation {
         let (labels, colorOf, counts) = labelComponents(q)
-        return mergeSpecks(q, labels: labels, colorOf: colorOf, counts: counts, speckSize: params.speckSize)
+        return mergeSpecks(q, labels: labels, colorOf: colorOf, counts: counts, speckSize: params.speckSize,
+                           contrastReference: params.contrastReference)
     }
 
     /// Flood-fills runs of equal palette index with an explicit stack (no recursion).
@@ -60,7 +64,8 @@ enum Segmenter {
     /// closest Lab color (ties: longer shared border, then lower label), using a region adjacency
     /// graph and union-find. Regions touching only transparency are kept. Labels are then renumbered
     /// in order of first appearance.
-    static func mergeSpecks(_ q: QuantizedImage, labels: [Int32], colorOf: [Int32], counts: [Int], speckSize: Int) -> Segmentation {
+    static func mergeSpecks(_ q: QuantizedImage, labels: [Int32], colorOf: [Int32], counts: [Int], speckSize: Int,
+                            contrastReference: Double? = nil) -> Segmentation {
         let w = q.width, h = q.height, n = counts.count
         var parent = Array(0..<n)
         var size = counts
@@ -81,10 +86,11 @@ enum Segmenter {
                 }
             }
             let labs = q.palette.map { Lab($0) }
-            let order = (0..<n).filter { counts[$0] < speckSize }.sorted { (counts[$0], $0) < (counts[$1], $1) }
+            let maxBoost = contrastReference == nil ? 1 : 4
+            let order = (0..<n).filter { counts[$0] < speckSize * maxBoost }.sorted { (counts[$0], $0) < (counts[$1], $1) }
             for r in order {
                 // Adjacency keys are always current roots, so `r` is still a root unless merged away.
-                guard parent[r] == r, size[r] < speckSize, !adj[r].isEmpty else { continue }
+                guard parent[r] == r, size[r] < speckSize * maxBoost, !adj[r].isEmpty else { continue }
                 let mine = labs[Int(colorOf[r])]
                 let target = adj[r].min { l, m in
                     let dl = labs[Int(colorOf[l.key])].distance(to: mine), dm = labs[Int(colorOf[m.key])].distance(to: mine)
@@ -92,6 +98,10 @@ enum Segmenter {
                     if l.value != m.value { return l.value > m.value }
                     return l.key < m.key
                 }!.key
+                if let ref = contrastReference {
+                    let d = labs[Int(colorOf[target])].distance(to: mine)
+                    guard Double(size[r]) < Double(speckSize) * min(4, max(1, ref / max(d, 1e-6))) else { continue }
+                } else if size[r] >= speckSize { continue }
                 parent[r] = target
                 size[target] += size[r]
                 for (nb, len) in adj[r] where nb != target {

@@ -14,8 +14,13 @@ public struct PolyChain: Sendable, Equatable {
 }
 
 enum PolygonBuilder {
-    static func build(_ t: Topology, params: PolygonParams) -> [PolyChain] {
-        t.chains.map { build($0, params: params) }
+    /// `multipliers` (one per chain) scale the tolerance — see `Perceptual.toleranceMultiplier`.
+    static func build(_ t: Topology, params: PolygonParams, multipliers: [Double]? = nil) -> [PolyChain] {
+        t.chains.indices.map { i in
+            var p = params
+            if let m = multipliers?[i] { p.tolerance *= m }
+            return build(t.chains[i], params: p)
+        }
     }
 
     static func build(_ chain: Chain, params p: PolygonParams) -> PolyChain {

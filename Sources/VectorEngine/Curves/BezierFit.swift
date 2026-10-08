@@ -9,6 +9,23 @@ enum BezierFit {
         return out
     }
 
+    /// The single least-squares cubic through `pts` (≥ 2) with the given end tangents, refined by a
+    /// few Newton–Raphson reparameterizations (no splitting).
+    static func single(_ pts: [Vec2], leftTangent: Vec2, rightTangent: Vec2) -> PathSegment {
+        let last = pts.count - 1
+        guard last >= 2 else {
+            let dist = pts[0].distance(to: pts[last]) / 3
+            return .cubic(c1: pts[0] + leftTangent * dist, c2: pts[last] + rightTangent * dist, to: pts[last])
+        }
+        var u = chordLengthParameterize(pts, 0, last)
+        var bez = generateBezier(pts, 0, last, u, leftTangent, rightTangent)
+        for _ in 0..<4 {
+            u = reparameterize(pts, 0, u, bez)
+            bez = generateBezier(pts, 0, last, u, leftTangent, rightTangent)
+        }
+        return .cubic(c1: bez[1], c2: bez[2], to: bez[3])
+    }
+
     /// `error` is a squared distance.
     private static func fitCubic(_ d: [Vec2], _ first: Int, _ last: Int, _ t1: Vec2, _ t2: Vec2, _ error: Double, _ out: inout [PathSegment]) {
         if last - first == 1 {

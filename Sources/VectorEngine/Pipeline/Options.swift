@@ -14,6 +14,8 @@ public struct PolygonParams: Sendable, Equatable {
     /// Bumps and notches on straight edges with at least this area (px) keep exact corners;
     /// smaller ones are smoothed like specks. 0 preserves all; nil disables detection.
     public var minFeatureArea: Int? = nil
+    /// Per-chain tolerance grows as contrast falls below this ΔE (nil = uniform tolerance).
+    public var contrastReference: Double? = nil
 }
 
 public struct CurveParams: Sendable, Equatable {
@@ -24,6 +26,12 @@ public struct CurveParams: Sendable, Equatable {
     public var unit: Double = 1
     /// Emit the polygon as straight lines (pixel art).
     public var exactPixels = false
+    /// Per-chain tolerance grows as contrast falls below this ΔE (nil = uniform tolerance).
+    public var contrastReference: Double? = nil
+    /// Perceptual reduction budget, 0…1 (0 = off). See `Simplifier`.
+    public var simplify: Double = 0
+    /// Display pixels per processing pixel, for simplification costs.
+    public var displayScale: Double = 1
 }
 
 public struct OutputParams: Sendable, Equatable {
@@ -72,6 +80,11 @@ public struct AdvancedOptions: Sendable, Equatable {
     public var curveTolerance: Double? = nil
     // Output
     public var precision = 1
+    // Perceptual
+    /// Loosen tolerances (and speck merging) on low-contrast boundaries.
+    public var contrastWeighting = true
+    /// ΔE at or above which a boundary counts as fully visible.
+    public var contrastReference = 30.0
 
     public init() {}
 }
@@ -87,13 +100,20 @@ public struct Options: Sendable, Equatable {
     public var speckSize: Int?
     /// Trace exactly along pixel edges; nil = automatic (on for detected pixel art).
     public var exactPixels: Bool?
+    /// Perceptual reduction, 0…1: merge curve segments while the visible change stays small.
+    public var simplify: Double?
+    /// Long side (px) the result will be shown at; detail invisible at that size is dropped.
+    /// nil = shown at original size.
+    public var displaySize: Int?
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
-                smoothness: Double? = nil, speckSize: Int? = nil, advanced: AdvancedOptions = AdvancedOptions())
+                smoothness: Double? = nil, speckSize: Int? = nil, simplify: Double? = nil, displaySize: Int? = nil,
+                advanced: AdvancedOptions = AdvancedOptions())
     {
         self.kind = kind; self.tracing = tracing; self.colorCount = colorCount; self.detail = detail
-        self.smoothness = smoothness; self.speckSize = speckSize; self.advanced = advanced
+        self.smoothness = smoothness; self.speckSize = speckSize; self.simplify = simplify
+        self.displaySize = displaySize; self.advanced = advanced
     }
 
     public func resolved(with analysis: Analysis) -> ResolvedOptions {
@@ -120,20 +140,24 @@ public struct Options: Sendable, Equatable {
         quantize.kmeansIterations = a.kmeansIterations
         quantize.kmeansSampleSize = a.kmeansSampleSize
 
+        let contrast = a.contrastWeighting ? a.contrastReference : nil
+        var segment = SegmentParams(speckSize: speck)
+        segment.contrastReference = exact ? nil : contrast
         return ResolvedOptions(
             kind: kind,
             prefilter: prefilter,
             quantize: quantize,
-            segment: SegmentParams(speckSize: speck),
+            segment: segment,
             polygon: PolygonParams(
                 tolerance: a.polygonTolerance ?? (1.6 - 1.2 * detail),
                 cornerAngle: a.cornerAngle ?? (30 + 60 * smooth),
                 cornerRunLength: max(1, a.cornerRunLength),
                 straightTolerance: a.straightTolerance,
                 exactPixels: exact,
-                minFeatureArea: speck),
+                minFeatureArea: speck,
+                contrastReference: contrast),
             curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance,
-                               exactPixels: exact),
+                               exactPixels: exact, contrastReference: contrast, simplify: max(0, min(1, simplify ?? 0))),
             output: OutputParams(tracing: tracing ?? (isLogo || exact ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision))))
     }
 }
@@ -154,6 +178,28 @@ extension ResolvedOptions {
         r.curve.unit = f
         r.segment.speckSize *= factor * factor
         r.polygon.minFeatureArea = r.polygon.minFeatureArea.map { $0 * factor * factor }
+        return r
+    }
+}
+
+extension ResolvedOptions {
+    /// Adapts to a result viewed with its long side at `displaySize` px (original long side
+    /// `longSide`): at scale s < 1, detail below a display pixel is invisible, so distance
+    /// tolerances and fixed lengths grow by 1/s, speck and feature areas by 1/s², and SVG
+    /// coordinates lose their decimals once 1/s ≥ 10.
+    func adjusted(forDisplay displaySize: Int?, longSide: Int) -> ResolvedOptions {
+        guard let displaySize, displaySize > 0, displaySize < longSide else { return self }
+        var r = self
+        let k = Double(longSide) / Double(displaySize)
+        r.polygon.tolerance *= k
+        r.polygon.straightTolerance *= k
+        r.polygon.unit *= k
+        r.curve.tolerance *= k
+        r.curve.straightTolerance *= k
+        r.curve.unit *= k
+        r.segment.speckSize = Int((Double(r.segment.speckSize) * k * k).rounded())
+        r.polygon.minFeatureArea = r.polygon.minFeatureArea.map { Int((Double($0) * k * k).rounded()) }
+        if k >= 10 { r.output.precision = 0 }
         return r
     }
 }

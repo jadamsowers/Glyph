@@ -4,6 +4,8 @@ public struct VectorStats: Sendable, Equatable {
     public var pathCount: Int
     public var segmentCount: Int
     public var byteCount: Int
+    /// Fraction of pixels that differ visibly (ΔE > 10) from the processed source when rendered.
+    public var visibleDifference: Double = 0
 }
 
 public struct VectorResult: Sendable, Equatable {

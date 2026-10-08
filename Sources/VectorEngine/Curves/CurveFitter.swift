@@ -3,12 +3,17 @@ import Foundation
 enum CurveFitter {
     /// `chains` and `regionSizes` (from the topology/segmentation) let junction smoothing follow
     /// the largest region's outline; without them any straight-enough pair is smoothed.
-    static func fit(_ polys: [PolyChain], params: CurveParams, chains: [Chain]? = nil, regionSizes: [Int]? = nil) -> [Curve] {
+    static func fit(_ polys: [PolyChain], params: CurveParams, chains: [Chain]? = nil, regionSizes: [Int]? = nil,
+                    multipliers: [Double]? = nil) -> [Curve] {
         if params.exactPixels {
             return polys.map { p in Curve.polyline(p.isClosed ? p.polygon + [p.polygon[0]] : p.polygon) }
         }
         let tangents = junctionTangents(polys, unit: params.unit, chains: chains, regionSizes: regionSizes)
-        return polys.indices.map { fit(polys[$0], params: params, startTangent: tangents[$0].start, endTangent: tangents[$0].end) }
+        return polys.indices.map { i in
+            var p = params
+            if let m = multipliers?[i] { p.tolerance *= m }
+            return fit(polys[i], params: p, startTangent: tangents[i].start, endTangent: tangents[i].end)
+        }
     }
 
     /// Where several chains meet at a junction, a region's outline usually continues smoothly
