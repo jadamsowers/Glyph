@@ -1,0 +1,54 @@
+import ArgumentParser
+import Foundation
+import VectorEngine
+
+@main
+struct VectorizeCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "vectorize", abstract: "Convert a bitmap image into an SVG.")
+
+    enum ModeChoice: String, ExpressibleByArgument, CaseIterable { case auto, logo, photo }
+    enum TraceChoice: String, ExpressibleByArgument, CaseIterable { case auto, shared, stacked }
+
+    @Argument(help: "Input image (PNG, JPEG, HEIC, TIFF, …).") var input: String
+    @Option(name: .shortAndLong, help: "Output SVG path (default: the input name with .svg).") var output: String?
+    @Option(help: "Pipeline: auto, logo or photo.") var mode: ModeChoice = .auto
+    @Option(help: "Tracing: auto, shared or stacked.") var trace: TraceChoice = .auto
+    @Option(help: "Number of colors.") var colors: Int?
+    @Option(help: "Detail 0–1 (higher keeps more nodes).") var detail: Double?
+    @Option(help: "Smoothness 0–1 (higher rounds more corners).") var smoothness: Double?
+    @Option(help: "Merge regions smaller than this many pixels.") var speck: Int?
+    @Option(help: "Longest side used for processing, in pixels.") var maxSize: Int = 2000
+    @Flag(name: .shortAndLong, help: "Print stage timings, analysis and stats.") var verbose = false
+
+    func run() throws {
+        let inURL = URL(fileURLWithPath: input)
+        let outURL = output.map { URL(fileURLWithPath: $0) } ?? inURL.deletingPathExtension().appendingPathExtension("svg")
+
+        var options = Options(kind: ImageKind(rawValue: mode.rawValue), colorCount: colors, detail: detail,
+                              smoothness: smoothness, speckSize: speck)
+        options.tracing = switch trace {
+        case .auto: nil
+        case .shared: .sharedEdges
+        case .stacked: .stacked
+        }
+        options.advanced.maxProcessingDimension = maxSize
+
+        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize)
+        let state = try Pipeline.run(input: image, options: options) { event in
+            guard verbose else { return }
+            let c = event.duration.components
+            let ms = Double(c.seconds) * 1000 + Double(c.attoseconds) / 1e15
+            let line = event.stage.title.padding(toLength: 10, withPad: " ", startingAt: 0) + String(format: "%8.1f ms\n", ms)
+            FileHandle.standardError.write(Data(line.utf8))
+        }
+        guard let result = state.result else { throw ExitCode.failure }
+        try result.svg.write(to: outURL, atomically: true, encoding: .utf8)
+
+        if verbose, let a = state.analysis, let r = state.resolved {
+            print("kind: \(r.kind.rawValue) (detected \(a.kind.rawValue): \(a.significantColors) colors, gradient \(String(format: "%.2f", a.gradientFraction)))")
+            print("tracing: \(r.output.tracing.rawValue), palette: \(state.quantized?.palette.count ?? 0) colors, processed at \(image.bitmap.width)×\(image.bitmap.height)")
+            print("paths: \(result.stats.pathCount), segments: \(result.stats.segmentCount), bytes: \(result.stats.byteCount)")
+        }
+        print(outURL.path)
+    }
+}
