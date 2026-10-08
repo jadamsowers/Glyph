@@ -58,7 +58,7 @@ public struct PipelineState: Sendable {
         switch stage {
         case .analyze:
             analysis = p.analysis
-            resolved = options.resolved(with: p.analysis!)
+            resolved = options.resolved(with: p.analysis!).adjusted(forUpscale: input.upscale)
         case .prefilter: prefiltered = p.prefiltered
         case .quantize: quantized = p.quantized
         case .segment: segmentation = p.segmentation
@@ -139,7 +139,7 @@ public enum Pipeline {
         guard p.input.id == input.id, let analysis = p.analysis, let oldResolved = p.resolved,
               ClassifierParams(p.options.advanced) == ClassifierParams(options.advanced)
         else { return 0 }
-        let changed = options.resolved(with: analysis).firstChangedStage(comparedTo: oldResolved)?.rawValue ?? Stage.allCases.count
+        let changed = options.resolved(with: analysis).adjusted(forUpscale: input.upscale).firstChangedStage(comparedTo: oldResolved)?.rawValue ?? Stage.allCases.count
         let missing = Stage.allCases.first { !p.has($0) }?.rawValue ?? Stage.allCases.count
         return min(changed, missing)
     }
@@ -149,7 +149,7 @@ public enum Pipeline {
         case .analyze:
             let a = Analyzer.analyze(s.input.bitmap, params: ClassifierParams(s.options.advanced))
             s.analysis = a
-            s.resolved = s.options.resolved(with: a)
+            s.resolved = s.options.resolved(with: a).adjusted(forUpscale: s.input.upscale)
         case .prefilter:
             s.prefiltered = Prefilter.apply(s.input.bitmap, params: s.resolved!.prefilter)
         case .quantize:
@@ -161,7 +161,8 @@ public enum Pipeline {
         case .polygon:
             s.polygons = PolygonBuilder.build(s.topology!, params: s.resolved!.polygon)
         case .curves:
-            s.curves = CurveFitter.fit(s.polygons!, params: s.resolved!.curve)
+            s.curves = CurveFitter.fit(s.polygons!, params: s.resolved!.curve, chains: s.topology!.chains,
+                                       regionSizes: s.segmentation!.regions.map(\.pixelCount))
         case .svg:
             let r = s.resolved!, input = s.input
             let shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
@@ -180,6 +181,7 @@ public enum Vectorizer {
     }
 
     public static func vectorize(contentsOf url: URL, options: Options = Options()) throws -> VectorResult {
-        try vectorize(InputImage.load(contentsOf: url, maxDimension: options.advanced.maxProcessingDimension), options: options)
+        try vectorize(InputImage.load(contentsOf: url, maxDimension: options.advanced.maxProcessingDimension,
+                                      minDimension: options.advanced.minProcessingDimension), options: options)
     }
 }

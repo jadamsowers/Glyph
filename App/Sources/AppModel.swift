@@ -40,7 +40,8 @@ final class AppModel {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
         do {
-            let image = try InputImage.load(contentsOf: url, maxDimension: options.advanced.maxProcessingDimension)
+            let image = try InputImage.load(contentsOf: url, maxDimension: options.advanced.maxProcessingDimension,
+                                            minDimension: options.advanced.minProcessingDimension)
             load(image, name: url.deletingPathExtension().lastPathComponent,
                  original: CGImageSourceCreateWithURL(url as CFURL, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
         } catch {
@@ -52,7 +53,8 @@ final class AppModel {
         guard let image = NSImage(pasteboard: .general),
               let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { errorMessage = "The clipboard doesn't contain an image."; return }
-        load(InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension), name: "Pasted Image", original: cg)
+        load(InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension,
+                        minDimension: options.advanced.minProcessingDimension), name: "Pasted Image", original: cg)
     }
 
     private func load(_ image: InputImage, name: String, original: CGImage?) {

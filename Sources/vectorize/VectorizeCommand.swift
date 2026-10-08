@@ -20,6 +20,7 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Smoothness 0–1 (higher rounds more corners).") var smoothness: Double?
     @Option(help: "Merge regions smaller than this many pixels.") var speck: Int?
     @Option(help: "Longest side used for processing, in pixels.") var maxSize: Int = 2000
+    @Option(help: "Upscale images whose long side is below this before tracing (0 = never).") var minSize: Int = 256
     @Option(help: "Write a PNG picture of every pipeline stage into this directory.") var stages: String?
     @Flag(name: .shortAndLong, help: "Print stage timings, analysis and stats.") var verbose = false
 
@@ -35,8 +36,9 @@ struct VectorizeCommand: ParsableCommand {
         case .stacked: .stacked
         }
         options.advanced.maxProcessingDimension = maxSize
+        options.advanced.minProcessingDimension = minSize
 
-        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize)
+        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize, minDimension: minSize)
         let state = try Pipeline.run(input: image, options: options) { event in
             guard verbose else { return }
             let c = event.duration.components

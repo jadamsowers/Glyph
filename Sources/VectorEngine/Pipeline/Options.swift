@@ -7,12 +7,16 @@ public struct PolygonParams: Sendable, Equatable {
     public var cornerRunLength: Int
     /// A polygon edge counts as straight if boundary points stay within this distance of it.
     public var straightTolerance: Double
+    /// Processing pixels per nominal pixel for the builder's fixed lengths (> 1 when upscaled).
+    public var unit: Double = 1
 }
 
 public struct CurveParams: Sendable, Equatable {
     /// Maximum distance (px) a fitted Bézier may stray from the boundary points.
     public var tolerance: Double
     public var straightTolerance: Double
+    /// Processing pixels per nominal pixel for the fitter's fixed lengths (> 1 when upscaled).
+    public var unit: Double = 1
 }
 
 public struct OutputParams: Sendable, Equatable {
@@ -35,6 +39,8 @@ public struct ResolvedOptions: Sendable, Equatable {
 /// Every knob. `nil` means "choose automatically from the analysis".
 public struct AdvancedOptions: Sendable, Equatable {
     public var maxProcessingDimension = 2000
+    /// Images smaller than this (long side) are upscaled for processing; 0 disables.
+    public var minProcessingDimension = 256
     public var alphaThreshold: UInt8 = 128
     // Classification
     public var logoMaxColors = 32
@@ -115,6 +121,25 @@ public struct Options: Sendable, Equatable {
                 straightTolerance: a.straightTolerance),
             curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance),
             output: OutputParams(tracing: tracing ?? (isLogo ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision))))
+    }
+}
+
+extension ResolvedOptions {
+    /// Adapts pixel-sized parameters to an input upscaled by `factor`: distance tolerances and the
+    /// builders' fixed lengths grow by factor / 2 (half an original pixel: finer than the source
+    /// grid, which is what upscaling is for, without inflating the output), speck areas by factor².
+    func adjusted(forUpscale factor: Int) -> ResolvedOptions {
+        guard factor > 1 else { return self }
+        var r = self
+        let f = Double(factor) / 2
+        r.polygon.tolerance *= f
+        r.polygon.straightTolerance *= f
+        r.curve.tolerance *= f
+        r.curve.straightTolerance *= f
+        r.polygon.unit = f
+        r.curve.unit = f
+        r.segment.speckSize *= factor * factor
+        return r
     }
 }
 

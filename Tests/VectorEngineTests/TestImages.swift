@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 @testable import VectorEngine
 
@@ -150,5 +151,37 @@ enum TestImages {
             if p == q || (p.a == 0 && q.a == 0) { same += 1 }
         }
         return Double(same) / Double(a.pixels.count)
+    }
+}
+
+extension TestImages {
+    /// A small outlined app-icon layout drawn by CoreGraphics: three rounded rects (r = 6) with a
+    /// 1-px dark stroke on a light background. `fillRects` are the fills' true outlines (inside
+    /// the stroke: inset 0.5, radius 5.5).
+    static let iconRects: [(rect: CGRect, color: CGColor)] = [
+        (CGRect(x: 3, y: 3, width: 37, height: 80), CGColor(srgbRed: 0.70, green: 0.70, blue: 0.72, alpha: 1)),
+        (CGRect(x: 45, y: 3, width: 38, height: 38), CGColor(srgbRed: 0.92, green: 0.89, blue: 0.80, alpha: 1)),
+        (CGRect(x: 45, y: 46, width: 38, height: 37), CGColor(srgbRed: 0.80, green: 0.80, blue: 0.83, alpha: 1)),
+    ]
+
+    static func outlinedIcon() -> Bitmap {
+        Bitmap.render(width: 86, height: 86) { ctx in
+            ctx.setFillColor(CGColor(srgbRed: 0.96, green: 0.96, blue: 0.96, alpha: 1))
+            ctx.fill(CGRect(x: 0, y: 0, width: 86, height: 86))
+            for (r, c) in iconRects {
+                ctx.addPath(CGPath(roundedRect: r, cornerWidth: 6, cornerHeight: 6, transform: nil))
+                ctx.setFillColor(c)
+                ctx.setStrokeColor(CGColor(srgbRed: 0.3, green: 0.3, blue: 0.32, alpha: 1))
+                ctx.setLineWidth(1)
+                ctx.drawPath(using: .fillStroke)
+            }
+        }
+    }
+
+    /// Distance from `p` to the outline of a rounded rect.
+    static func roundedRectDistance(_ p: Vec2, rect r: CGRect, radius: Double) -> Double {
+        let c = Vec2(r.midX, r.midY), hx = r.width / 2 - radius, hy = r.height / 2 - radius
+        let qx = abs(p.x - c.x) - hx, qy = abs(p.y - c.y) - hy
+        return abs(Vec2(max(qx, 0), max(qy, 0)).length + min(max(qx, qy), 0) - radius)
     }
 }

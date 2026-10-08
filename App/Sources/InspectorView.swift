@@ -126,6 +126,7 @@ struct AdvancedOptionsView: View {
     var body: some View {
         Group {
             Stepper("Max size (next open): \(advanced.maxProcessingDimension) px", value: $advanced.maxProcessingDimension, in: 256...8000, step: 256)
+            Stepper("Min size, upscale below (next open): \(advanced.minProcessingDimension) px", value: $advanced.minProcessingDimension, in: 0...2048, step: 128)
             Stepper("Logo max colors: \(advanced.logoMaxColors)", value: $advanced.logoMaxColors, in: 2...128)
             row("Logo max gradient", $advanced.logoMaxGradientFraction, 0...1)
             row("Logo max edge share", $advanced.logoMaxEdgeFraction, 0...1)

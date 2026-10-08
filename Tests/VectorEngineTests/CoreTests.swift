@@ -63,6 +63,28 @@ import Testing
         #expect(input.bitmap.width == 10 && input.scaleX == 1)
     }
 
+    @Test func smallImagesAreUpscaledToTheMinimumSize() {
+        let small = Bitmap(width: 60, height: 30) { _, _ in RGBA(1, 2, 3) }
+        let input = InputImage(cgImage: small.makeCGImage(), maxDimension: 2000, minDimension: 256)
+        #expect(input.upscale == 8)   // ⌈512 / 60⌉ = 9, capped at 8
+        #expect(input.bitmap.width == 480 && input.bitmap.height == 240)
+        #expect(input.originalWidth == 60 && input.scaleX == 0.125)
+        let mid = InputImage(cgImage: Bitmap(width: 200, height: 100) { _, _ in RGBA(1, 2, 3) }.makeCGImage(), maxDimension: 2000, minDimension: 256)
+        #expect(mid.upscale == 4)     // ⌈512 / 200⌉ = 3, raised to the minimum of 4
+        let large = InputImage(cgImage: Bitmap(width: 300, height: 100) { _, _ in RGBA(1, 2, 3) }.makeCGImage(), maxDimension: 2000, minDimension: 256)
+        #expect(large.upscale == 1)   // at or above the threshold: untouched
+        let tiny = InputImage(cgImage: Bitmap(width: 20, height: 20) { _, _ in RGBA(1, 2, 3) }.makeCGImage(), maxDimension: 2000, minDimension: 256)
+        #expect(tiny.upscale == 8)   // capped
+    }
+
+    @Test func bicubicUpscaleSmoothsAnEdge() {
+        let edge = Bitmap(width: 4, height: 1) { x, _ in x < 2 ? RGBA(0, 0, 0) : RGBA(255, 255, 255) }
+        let up = edge.upscaled(by: 8)
+        let row = (0..<32).map { Int(up[$0, 0].r) }
+        #expect(row == row.sorted())                                // monotone ramp, no overshoot
+        #expect(row.filter { $0 > 20 && $0 < 235 }.count >= 4)      // with intermediate values
+    }
+
     @Test func unreadableFileThrows() {
         #expect(throws: VectorEngineError.self) {
             try InputImage.load(contentsOf: URL(fileURLWithPath: "/nonexistent/x.png"), maxDimension: 100)

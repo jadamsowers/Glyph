@@ -1,15 +1,74 @@
 import Foundation
 
 enum CurveFitter {
-    static func fit(_ polys: [PolyChain], params: CurveParams) -> [Curve] {
-        polys.map { fit($0, params: params) }
+    /// `chains` and `regionSizes` (from the topology/segmentation) let junction smoothing follow
+    /// the largest region's outline; without them any straight-enough pair is smoothed.
+    static func fit(_ polys: [PolyChain], params: CurveParams, chains: [Chain]? = nil, regionSizes: [Int]? = nil) -> [Curve] {
+        let tangents = junctionTangents(polys, unit: params.unit, chains: chains, regionSizes: regionSizes)
+        return polys.indices.map { fit(polys[$0], params: params, startTangent: tangents[$0].start, endTangent: tangents[$0].end) }
+    }
+
+    /// Where several chains meet at a junction, a region's outline usually continues smoothly
+    /// through it from one chain into another (e.g. a fill whose neighbour changes color mid-curve,
+    /// as along an anti-aliased outline stroke). At each junction, pair two chain ends that bound
+    /// the same region and continue nearly straight (turn ≤ 60°) — preferring the largest such
+    /// region, then the straightest — and give the pair one shared tangent, so that region's
+    /// outline has no kink. Tangents point from the junction into the chain.
+    static func junctionTangents(_ polys: [PolyChain], unit: Double = 1, chains: [Chain]? = nil,
+                                 regionSizes: [Int]? = nil) -> [(start: Vec2?, end: Vec2?)] {
+        func sharedRegionSize(_ a: Int, _ b: Int) -> Int? {
+            guard let chains, let regionSizes else { return 0 }
+            let shared = Set([chains[a].left, chains[a].right]).intersection([chains[b].left, chains[b].right]).filter { $0 >= 0 }
+            return shared.map { regionSizes[Int($0)] }.max()
+        }
+        struct End { var chain: Int; var isStart: Bool; var direction: Vec2 }
+        var byPoint: [Vec2: [End]] = [:]
+        // Chains shorter than ~4 px are pixel-level detail; smoothing through them would distort it.
+        for (i, p) in polys.enumerated() where !p.isClosed && p.dense.count >= 2
+            && zip(p.dense, p.dense.dropFirst()).reduce(0, { $0 + $1.0.distance(to: $1.1) }) >= 4 * unit
+        {
+            byPoint[p.dense[0], default: []].append(End(chain: i, isStart: true, direction: leaving(p.dense, reach: 3 * unit)))
+            byPoint[p.dense[p.dense.count - 1], default: []].append(End(chain: i, isStart: false, direction: leaving(Array(p.dense.reversed()), reach: 3 * unit)))
+        }
+        var result = [(start: Vec2?, end: Vec2?)](repeating: (nil, nil), count: polys.count)
+        let maxTurn = cos(60 * Double.pi / 180)
+        for ends in byPoint.values where ends.count >= 2 {
+            var free = Array(ends.indices)
+            while free.count >= 2 {
+                var best: (a: Int, b: Int, size: Int, straightness: Double)?
+                for a in free.indices {
+                    for b in free.indices where b > a {
+                        // Continuing from end b's chain through the junction into end a's chain.
+                        let straightness = -ends[free[a]].direction.dot(ends[free[b]].direction)
+                        guard straightness >= maxTurn, let size = sharedRegionSize(ends[free[a]].chain, ends[free[b]].chain) else { continue }
+                        if best == nil || (size, straightness) > (best!.size, best!.straightness) { best = (a, b, size, straightness) }
+                    }
+                }
+                guard let (a, b, _, _) = best else { break }
+                let ea = ends[free[a]], eb = ends[free[b]]
+                let shared = (ea.direction - eb.direction).normalized
+                for (e, t) in [(ea, shared), (eb, -shared)] {
+                    if e.isStart { result[e.chain].start = t } else { result[e.chain].end = t }
+                }
+                free.remove(at: b)
+                free.remove(at: a)
+            }
+        }
+        return result
+    }
+
+    /// Direction from pts[0] toward the first point at least ~3 px away (or the last point).
+    static func leaving(_ pts: [Vec2], reach: Double = 3) -> Vec2 {
+        let first = pts[0]
+        for p in pts.dropFirst() where p.distance(to: first) >= reach { return (p - first).normalized }
+        return (pts[pts.count - 1] - first).normalized
     }
 
     /// Breaks the chain at corners (and open ends) and fits each span: spans that are a single
     /// polygon edge, or whose points stay within `straightTolerance` of the chord, become one line;
     /// the rest become Bézier cubics. Closed loops with < 2 corners get smooth joins added so no
     /// span starts and ends at the same point.
-    static func fit(_ poly: PolyChain, params p: CurveParams) -> Curve {
+    static func fit(_ poly: PolyChain, params p: CurveParams, startTangent: Vec2? = nil, endTangent: Vec2? = nil) -> Curve {
         let dense = poly.dense, n = dense.count, v = poly.vertices
         var breaks = zip(v, poly.corners).filter(\.1).map(\.0)
         var smooth = Set<Int>()
@@ -38,10 +97,24 @@ enum CurveFitter {
                 if pts.count > 1 && vertexSet.contains(k) { interiorVertex = true }
                 k = (k + 1) % n
             }
+            // An open chain's ends may carry a tangent shared with a neighbouring chain at a junction.
+            let startFixed = !poly.isClosed && a == 0 ? startTangent : nil
+            let endFixed = !poly.isClosed && b == n - 1 ? endTangent : nil
+            let start = startFixed ?? (smooth.contains(a) ? central(a) : forward(pts))
+            let end = endFixed ?? (smooth.contains(b) ? -central(b) : backward(pts))
+            // A fixed tangent that disagrees with the chord (by > 10°) means the outline curves here
+            // even if the polygon stage saw a single straight edge: fit the span honoring the
+            // tangents (straight runs inside it still become lines), without the line shortcut.
+            let chord = (pts[pts.count - 1] - pts[0]).normalized
+            let agrees = (startFixed.map { $0.dot(chord) > cos(10 * Double.pi / 180) } ?? true)
+                && (endFixed.map { (-$0).dot(chord) > cos(10 * Double.pi / 180) } ?? true)
+            if !agrees {
+                segments += fitSpan(pts, startTangent: start, endTangent: end, params: p, allowStraightShortcut: false,
+                                    fixedStart: startFixed != nil, fixedEnd: endFixed != nil)
+                continue
+            }
             // A span that is a single polygon edge was already judged straight by the polygon stage.
             if !interiorVertex { segments.append(.line(to: dense[b])); continue }
-            let start = smooth.contains(a) ? central(a) : forward(pts)
-            let end = smooth.contains(b) ? -central(b) : backward(pts)
             segments += fitSpan(pts, startTangent: start, endTangent: end, params: p)
         }
         return Curve(start: dense[breaks[0]], segments: segments)
@@ -50,15 +123,32 @@ enum CurveFitter {
     /// Fits one span between breaks. Long straight runs inside it become lines (their interior
     /// endpoints snapped onto the best-fit line); the curved pieces between them are Bézier-fitted
     /// with tangents that meet each line smoothly. The span's own endpoints never move.
-    static func fitSpan(_ points: [Vec2], startTangent: Vec2, endTangent: Vec2, params p: CurveParams) -> [PathSegment] {
+    static func fitSpan(_ points: [Vec2], startTangent: Vec2, endTangent: Vec2, params p: CurveParams,
+                        allowStraightShortcut: Bool = true, fixedStart: Bool = false, fixedEnd: Bool = false) -> [PathSegment] {
         let a = points[0], b = points[points.count - 1]
-        if points.count == 2 || points.dropFirst().dropLast().allSatisfy({ $0.distance(toSegment: a, b) <= p.straightTolerance }) {
+        if allowStraightShortcut,
+           points.count == 2 || points.dropFirst().dropLast().allSatisfy({ $0.distance(toSegment: a, b) <= p.straightTolerance }) {
             return [.line(to: b)]
         }
         var pts = points
         var out: [PathSegment] = []
         var cursor = 0, cursorTangent = startTangent
-        for run in straightRuns(pts, tolerance: p.straightTolerance) {
+        for found in straightRuns(pts, tolerance: p.straightTolerance, unit: p.unit) {
+            var run = found
+            // A run reaching a span end whose tangent is fixed (shared at a junction) and differs
+            // from the run's direction stops a few pixels short, leaving room to bend into it.
+            let runDirection = (pts[run.upperBound] - pts[run.lowerBound]).normalized
+            let bendRoom = 3 * p.unit, agreeing = cos(10 * Double.pi / 180)
+            if fixedStart && run.lowerBound == 0 && startTangent.dot(runDirection) < agreeing {
+                var lo = 0
+                while lo < run.upperBound - 1 && pts[lo].distance(to: pts[0]) < bendRoom { lo += 1 }
+                run = lo...run.upperBound
+            }
+            if fixedEnd && run.upperBound == pts.count - 1 && (-endTangent).dot(runDirection) < agreeing {
+                var hi = run.upperBound
+                while hi > run.lowerBound + 1 && pts[hi].distance(to: pts[pts.count - 1]) < bendRoom { hi -= 1 }
+                run = run.lowerBound...hi
+            }
             let (center, direction) = lineFit(pts, run.lowerBound, run.upperBound)
             func project(_ v: Vec2) -> Vec2 { center + direction * (v - center).dot(direction) }
             if run.lowerBound > 0 { pts[run.lowerBound] = project(pts[run.lowerBound]) }
@@ -125,7 +215,7 @@ enum CurveFitter {
     /// their chord, trimmed of ends that leak into neighbouring arcs; a run is kept if every point
     /// is within tolerance / 3 of its best-fit line and it is long enough (see above). Longest
     /// runs are taken first so a run can't cut across a side. Ascending, sharing at most endpoints.
-    static func straightRuns(_ pts: [Vec2], tolerance: Double) -> [ClosedRange<Int>] {
+    static func straightRuns(_ pts: [Vec2], tolerance: Double, unit: Double = 1) -> [ClosedRange<Int>] {
         let n = pts.count
         guard n >= 3 else { return [] }
         func fits(_ i: Int, _ k: Int) -> Bool {
@@ -137,7 +227,7 @@ enum CurveFitter {
             j = max(j, i + 1)
             while j > i + 1 && !fits(i, j) { j -= 1 }
             while j + 1 < n && fits(i, j + 1) { j += 1 }
-            if pts[i].distance(to: pts[j]) >= minExactLineLength, let run = trim(i...j, pts, tolerance: tolerance) {
+            if pts[i].distance(to: pts[j]) >= minExactLineLength * unit, let run = trim(i...j, pts, tolerance: tolerance, unit: unit) {
                 candidates.append(run)
             }
         }
@@ -153,7 +243,7 @@ enum CurveFitter {
     /// tolerance / 6) — a run found by chord distance leaks into neighbouring arcs, and the leak
     /// shows at its ends — so lines stop at the true tangent points. Interior jitter (JPEG) up to
     /// the tolerance is allowed. Nil if what remains isn't a line (see `minLineLength`, `curves`).
-    static func trim(_ run: ClosedRange<Int>, _ pts: [Vec2], tolerance: Double) -> ClosedRange<Int>? {
+    static func trim(_ run: ClosedRange<Int>, _ pts: [Vec2], tolerance: Double, unit: Double = 1) -> ClosedRange<Int>? {
         var i = run.lowerBound, j = run.upperBound
         while j > i {
             let (c, d) = lineFit(pts, i, j)
@@ -163,8 +253,8 @@ enum CurveFitter {
                 let length = pts[i].distance(to: pts[j])
                 let worst = (i...j).map(off).max()!
                 let axisAligned = abs(d.x) < 1e-6 || abs(d.y) < 1e-6
-                let isLine = (length >= minLineLength && !curves(pts, i, j, tolerance: tolerance))
-                    || (axisAligned && worst <= 0.05 && length >= minExactLineLength)
+                let isLine = (length >= minLineLength * unit && !curves(pts, i, j, tolerance: tolerance))
+                    || (axisAligned && worst <= 0.05 && length >= minExactLineLength * unit)
                 return isLine ? i...j : nil
             }
             if oi >= oj { i += 1 } else { j -= 1 }
