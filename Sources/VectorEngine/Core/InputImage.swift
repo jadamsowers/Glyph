@@ -43,8 +43,10 @@ public struct InputImage: Sendable {
         let longSide = max(w, h)
         if minDimension > 0 && longSide < minDimension {
             let factor = min(8, max(4, Int((2 * Double(minDimension) / Double(longSide)).rounded(.up))))
-            if factor > 1 {
-                self.init(bitmap: Bitmap(cgImage: cgImage).upscaled(by: factor), originalWidth: w, originalHeight: h)
+            let original = Bitmap(cgImage: cgImage)
+            // Pixel art's steps are real detail; blurring them would destroy exactly that.
+            if factor > 1 && !Analyzer.looksLikePixelArt(original) {
+                self.init(bitmap: original.upscaled(by: factor), originalWidth: w, originalHeight: h)
                 return
             }
         }

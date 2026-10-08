@@ -147,7 +147,9 @@ public enum Pipeline {
     static func compute(_ stage: Stage, _ s: inout PipelineState) {
         switch stage {
         case .analyze:
-            let a = Analyzer.analyze(s.input.bitmap, params: ClassifierParams(s.options.advanced))
+            var a = Analyzer.analyze(s.input.bitmap, params: ClassifierParams(s.options.advanced))
+            // Only the original pixels can show pixel art; an upscaled input was already judged not to be.
+            if s.input.upscale > 1 { a.isPixelArt = false }
             s.analysis = a
             s.resolved = s.options.resolved(with: a).adjusted(forUpscale: s.input.upscale)
         case .prefilter:

@@ -28,6 +28,12 @@ struct InspectorView: View {
                     Text("Logo").tag(ImageKind?.some(.logo))
                     Text("Photo").tag(ImageKind?.some(.photo))
                 }
+                Picker("Exact pixels", selection: $model.options.exactPixels) {
+                    Text("Auto").tag(Bool?.none)
+                    Text("On").tag(Bool?.some(true))
+                    Text("Off").tag(Bool?.some(false))
+                }
+                .help("Trace exactly along pixel edges — automatic for pixel art")
                 Picker("Tracing", selection: $model.options.tracing) {
                     Text("Auto").tag(TracingMode?.none)
                     Text("Shared edges").tag(TracingMode?.some(.sharedEdges))

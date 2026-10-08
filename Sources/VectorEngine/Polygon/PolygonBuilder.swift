@@ -19,18 +19,42 @@ enum PolygonBuilder {
     }
 
     static func build(_ chain: Chain, params p: PolygonParams) -> PolyChain {
-        var dense = densePoints(chain, cornerRunLength: p.cornerRunLength)
+        if p.exactPixels { return exactPolygon(chain) }
+        var (dense, protected) = samplePoints(chain, cornerRunLength: p.cornerRunLength, minFeatureArea: p.minFeatureArea)
         var vertices: [Int]
         if chain.isClosed {
-            vertices = removeRedundant(simplifyClosed(dense, tolerance: p.tolerance), dense, tolerance: p.tolerance)
+            vertices = protected.isEmpty
+                ? simplifyClosed(dense, tolerance: p.tolerance)
+                : simplifyClosed(dense, anchors: protected.sorted(), tolerance: p.tolerance)
+            vertices = removeRedundant(vertices, dense, tolerance: p.tolerance, keeping: protected)
             if vertices.count < 3 { vertices = Array(dense.indices) }
         } else {
-            vertices = simplify(Array(dense.indices), dense, tolerance: p.tolerance)
+            let anchors = Set([0, dense.count - 1]).union(protected).sorted()
+            vertices = zip(anchors, anchors.dropFirst()).flatMap { a, b in simplify(Array(a...b), dense, tolerance: p.tolerance).dropLast() }
+                + [dense.count - 1]
         }
+        // Sharpening can shift indices, so protected vertices are tracked by position.
+        let protectedPoints = Set(protected.map { dense[$0] })
         (dense, vertices) = sharpenCorners(dense, vertices, isClosed: chain.isClosed, cornerAngle: p.cornerAngle,
-                                           straightTolerance: p.straightTolerance, unit: p.unit)
-        let corners = classifyCorners(dense, vertices, isClosed: chain.isClosed, params: p)
+                                           straightTolerance: p.straightTolerance, unit: p.unit, keeping: protectedPoints)
+        var corners = classifyCorners(dense, vertices, isClosed: chain.isClosed, params: p)
+        for (k, v) in vertices.enumerated() where protectedPoints.contains(dense[v]) { corners[k] = true }
         return PolyChain(dense: dense, vertices: vertices, corners: corners, isClosed: chain.isClosed)
+    }
+
+    /// Pixel-exact outline: the chain's turn vertices, all corners.
+    static func exactPolygon(_ chain: Chain) -> PolyChain {
+        var pts = chain.points
+        if chain.isClosed { pts.removeLast() }
+        let m = pts.count
+        var keep: [Int] = []
+        for i in 0..<m {
+            if !chain.isClosed && (i == 0 || i == m - 1) { keep.append(i); continue }
+            let a = pts[(i + m - 1) % m], b = pts[i], c = pts[(i + 1) % m]
+            if (b.x - a.x, b.y - a.y) != (c.x - b.x, c.y - b.y) { keep.append(i) }
+        }
+        let dense = keep.map { pts[$0].vec }
+        return PolyChain(dense: dense, vertices: Array(dense.indices), corners: dense.map { _ in true }, isClosed: chain.isClosed)
     }
 
     struct Run {
@@ -57,6 +81,16 @@ enum PolygonBuilder {
     /// Run midpoints (plus both ends of flat runs), and turn vertices between two long runs.
     /// Open chains keep exact endpoints.
     static func densePoints(_ chain: Chain, cornerRunLength: Int) -> [Vec2] {
+        samplePoints(chain, cornerRunLength: cornerRunLength, minFeatureArea: nil).dense
+    }
+
+    /// `densePoints`, plus detection of real pixel-level features. A bump or notch on a straight
+    /// edge is a run that steps out, runs, and steps back by the same depth onto the line it
+    /// left, with base runs on both sides at least as long as itself. (A rasterized curve's flat
+    /// top fails that: its neighbouring runs are shorter.) Features with area ≥ `minFeatureArea`
+    /// are sampled at their exact lattice corners, returned as `protected` indices that
+    /// simplification must keep and that become corners.
+    static func samplePoints(_ chain: Chain, cornerRunLength: Int, minFeatureArea: Int?) -> (dense: [Vec2], protected: Set<Int>) {
         var pts = chain.points
         if chain.isClosed {
             pts.removeLast()
@@ -72,9 +106,43 @@ enum PolygonBuilder {
             pts.append(pts[0])
         }
         let rs = runs(pts)
+        func runAt(_ idx: Int) -> Run? {
+            if chain.isClosed { return rs[((idx % rs.count) + rs.count) % rs.count] }
+            return idx >= 0 && idx < rs.count ? rs[idx] : nil
+        }
+        func wrap(_ idx: Int) -> Int { ((idx % rs.count) + rs.count) % rs.count }
+        // Roles: a feature's own run, and the steps out of and back into its base line.
+        var isFeature = [Bool](repeating: false, count: rs.count)
+        var stepOut = isFeature, stepIn = isFeature
+        if let minArea = minFeatureArea, rs.count >= 5 {
+            for k in rs.indices {
+                guard let r = runAt(k), let out = runAt(k - 1), let back = runAt(k + 1),
+                      let before = runAt(k - 2), let after = runAt(k + 2),
+                      chain.isClosed || (k >= 2 && k + 2 < rs.count)
+                else { continue }
+                let returns = out.dx == -back.dx && out.dy == -back.dy && out.length == back.length
+                let onLine = before.dx == r.dx && before.dy == r.dy && after.dx == r.dx && after.dy == r.dy
+                let based = before.length >= r.length && after.length >= r.length
+                if returns && onLine && based && r.length * out.length >= max(1, minArea) {
+                    isFeature[k] = true
+                    stepOut[wrap(k - 1)] = true
+                    stepIn[wrap(k + 1)] = true
+                }
+            }
+        }
+        var protected = Set<Int>()
         var out: [Vec2] = chain.isClosed ? [] : [pts[0].vec]
+        func exact(_ v: Vec2) {
+            if out.last != v { out.append(v) }
+            protected.insert(out.count - 1)
+        }
         for (k, r) in rs.enumerated() {
             let start = pts[r.start].vec, dir = Vec2(Double(r.dx), Double(r.dy))
+            if isFeature[k] || stepOut[k] || stepIn[k] {
+                if isFeature[k] || stepOut[k] { exact(start) }
+                if isFeature[k] || stepIn[k] { exact(pts[r.start + r.length].vec) }
+                continue
+            }
             // A flat side: its neighbours step in opposite directions (unlike a staircase diagonal)
             // and it is much longer than the next parallel runs. A circle's flat top is only ~2.7×
             // longer than those at any radius, so it isn't mistaken for a side. Along a side the
@@ -92,21 +160,27 @@ enum PolygonBuilder {
             // tangent point, about one parallel-run length (~0.73·√R) plus a little; inset the end
             // sample by that. Ends next to a long run already get an exact corner vertex below.
             let half = Double(r.length) / 2
-            if flat && prev!.length < cornerRunLength {
+            let nextIsFeatureStep = stepOut[wrap(k + 1)] && (chain.isClosed || k + 1 < rs.count)
+            let prevIsFeatureStep = stepIn[wrap(k - 1)] && (chain.isClosed || k > 0)
+            if flat && prev!.length < cornerRunLength && !prevIsFeatureStep {
                 out.append(start + dir * min(half - 0.5, 0.5 + 1.4 * Double(run(-2)?.length ?? 0)))
             }
             out.append(start + dir * half)
-            if flat && next!.length < cornerRunLength {
+            if flat && next!.length < cornerRunLength && !nextIsFeatureStep {
                 out.append(start + dir * (Double(r.length) - min(half - 0.5, 0.5 + 1.4 * Double(run(2)?.length ?? 0))))
             }
             if k == rs.count - 1 && !chain.isClosed { break }
             let following = rs[(k + 1) % rs.count]
-            if r.length >= cornerRunLength && following.length >= cornerRunLength {
+            if r.length >= cornerRunLength && following.length >= cornerRunLength && !stepOut[wrap(k + 1)] {
                 out.append(pts[r.start + r.length].vec)
             }
         }
-        if !chain.isClosed { out.append(pts[pts.count - 1].vec) }
-        return out
+        if !chain.isClosed && out.last != pts[pts.count - 1].vec { out.append(pts[pts.count - 1].vec) }
+        if chain.isClosed, out.count > 1, out.first == out.last {
+            out.removeLast()
+            if protected.contains(out.count) { protected.remove(out.count); protected.insert(0) }
+        }
+        return (out, protected)
     }
 
     /// Douglas–Peucker over `idx` (indices into `pts`); always keeps the first and last index.
@@ -142,13 +216,25 @@ enum PolygonBuilder {
         return first + second.dropFirst().dropLast()
     }
 
+    /// Douglas–Peucker on a ring between fixed anchor indices (ascending), each kept.
+    static func simplifyClosed(_ pts: [Vec2], anchors: [Int], tolerance: Double) -> [Int] {
+        let n = pts.count
+        var out: [Int] = []
+        for (k, a) in anchors.enumerated() {
+            let b = anchors[(k + 1) % anchors.count]
+            let span = b > a ? Array(a...b) : Array(a..<n) + Array(0...b)
+            out += simplify(span, pts, tolerance: tolerance).dropLast()
+        }
+        return Array(Set(out)).sorted()
+    }
+
     /// Drops ring vertices whose removal keeps every dense point within tolerance.
-    static func removeRedundant(_ v: [Int], _ dense: [Vec2], tolerance: Double) -> [Int] {
+    static func removeRedundant(_ v: [Int], _ dense: [Vec2], tolerance: Double, keeping: Set<Int> = []) -> [Int] {
         var v = v
         var j = 0
         while j < v.count && v.count > 3 {
             let prev = v[(j + v.count - 1) % v.count], next = v[(j + 1) % v.count]
-            if maxDeviation(dense, from: prev, to: next) <= tolerance { v.remove(at: j) } else { j += 1 }
+            if !keeping.contains(v[j]) && maxDeviation(dense, from: prev, to: next) <= tolerance { v.remove(at: j) } else { j += 1 }
         }
         return v
     }
@@ -160,7 +246,7 @@ enum PolygonBuilder {
     /// pixels apart between two much longer edges. Replace such a pair with the intersection of
     /// those edges when it is close by and forms a real corner. Open-chain endpoints never move.
     static func sharpenCorners(_ dense: [Vec2], _ v: [Int], isClosed: Bool, cornerAngle: Double,
-                               straightTolerance: Double, unit: Double = 1) -> ([Vec2], [Int]) {
+                               straightTolerance: Double, unit: Double = 1, keeping: Set<Vec2> = []) -> ([Vec2], [Int]) {
         let reach = cornerReach * unit
         var dense = dense, v = v
         var j = isClosed ? 0 : 1
@@ -171,6 +257,7 @@ enum PolygonBuilder {
             if isClosed ? j >= m - 1 : j + 2 >= m { break }
             let a = dense[v[isClosed ? (j + m - 1) % m : j - 1]], b = dense[v[j]]
             let c = dense[v[j + 1]], d = dense[v[(j + 2) % m]]
+            if keeping.contains(b) || keeping.contains(c) { j += 1; continue }
             let bevel = b.distance(to: c)
             // A shaved corner is a straight cut; a small rounded corner bulges outward from it.
             if bevel < reach, a.distance(to: b) >= 2.5 * bevel, c.distance(to: d) >= 2.5 * bevel,

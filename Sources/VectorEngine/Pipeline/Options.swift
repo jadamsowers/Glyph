@@ -9,6 +9,11 @@ public struct PolygonParams: Sendable, Equatable {
     public var straightTolerance: Double
     /// Processing pixels per nominal pixel for the builder's fixed lengths (> 1 when upscaled).
     public var unit: Double = 1
+    /// Trace exactly along pixel edges (pixel art): no smoothing at all.
+    public var exactPixels = false
+    /// Bumps and notches on straight edges with at least this area (px) keep exact corners;
+    /// smaller ones are smoothed like specks. 0 preserves all; nil disables detection.
+    public var minFeatureArea: Int? = nil
 }
 
 public struct CurveParams: Sendable, Equatable {
@@ -17,6 +22,8 @@ public struct CurveParams: Sendable, Equatable {
     public var straightTolerance: Double
     /// Processing pixels per nominal pixel for the fitter's fixed lengths (> 1 when upscaled).
     public var unit: Double = 1
+    /// Emit the polygon as straight lines (pixel art).
+    public var exactPixels = false
 }
 
 public struct OutputParams: Sendable, Equatable {
@@ -78,6 +85,8 @@ public struct Options: Sendable, Equatable {
     /// 0…1; higher rounds more corners.
     public var smoothness: Double?
     public var speckSize: Int?
+    /// Trace exactly along pixel edges; nil = automatic (on for detected pixel art).
+    public var exactPixels: Bool?
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -94,6 +103,8 @@ public struct Options: Sendable, Equatable {
         let detail = max(0, min(1, self.detail ?? (isLogo ? 0.6 : 0.3)))
         let smooth = max(0, min(1, smoothness ?? (isLogo ? 0.5 : 0.6)))
         let colors = max(2, min(256, colorCount ?? (isLogo ? max(2, min(32, analysis.significantColors)) : 16)))
+        let exact = exactPixels ?? analysis.isPixelArt
+        let speck = max(0, speckSize ?? (exact ? 0 : (isLogo ? 4 : 24)))
 
         var prefilter = PrefilterParams(enabled: a.prefilter ?? !isLogo)
         prefilter.radius = a.prefilterRadius
@@ -113,14 +124,17 @@ public struct Options: Sendable, Equatable {
             kind: kind,
             prefilter: prefilter,
             quantize: quantize,
-            segment: SegmentParams(speckSize: max(0, speckSize ?? (isLogo ? 4 : 24))),
+            segment: SegmentParams(speckSize: speck),
             polygon: PolygonParams(
                 tolerance: a.polygonTolerance ?? (1.6 - 1.2 * detail),
                 cornerAngle: a.cornerAngle ?? (30 + 60 * smooth),
                 cornerRunLength: max(1, a.cornerRunLength),
-                straightTolerance: a.straightTolerance),
-            curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance),
-            output: OutputParams(tracing: tracing ?? (isLogo ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision))))
+                straightTolerance: a.straightTolerance,
+                exactPixels: exact,
+                minFeatureArea: speck),
+            curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance,
+                               exactPixels: exact),
+            output: OutputParams(tracing: tracing ?? (isLogo || exact ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision))))
     }
 }
 
@@ -139,6 +153,7 @@ extension ResolvedOptions {
         r.polygon.unit = f
         r.curve.unit = f
         r.segment.speckSize *= factor * factor
+        r.polygon.minFeatureArea = r.polygon.minFeatureArea.map { $0 * factor * factor }
         return r
     }
 }

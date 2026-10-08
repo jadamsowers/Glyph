@@ -9,6 +9,9 @@ public struct Analysis: Sendable, Equatable {
     public var shares: [Double]
     /// Share of pixels at hard edges (box-averaged change above 40): logos have few; noise is all edge.
     public var edgeFraction: Double = 0
+    /// Hard-edged, unblended pixels (pixel art, or shapes drawn without anti-aliasing): every
+    /// staircase step is real, so the image is traced exactly along pixel edges.
+    public var isPixelArt: Bool = false
 }
 
 public struct ClassifierParams: Sendable, Equatable {
@@ -37,7 +40,44 @@ enum Analyzer {
         return Analysis(
             kind: isLogo ? .logo : .photo, significantColors: palette.count, gradientFraction: gradient,
             palette: palette.map(\.color), shares: palette.map { total > 0 ? Double($0.count) / Double(total) : 0 },
-            edgeFraction: edges)
+            edgeFraction: edges, isPixelArt: looksLikePixelArt(bitmap, alphaThreshold: p.alphaThreshold))
+    }
+
+    /// Whether the image's edges are hard and unblended. Judged only at "stair" pixels — edge
+    /// pixels that differ from both a horizontal and a vertical neighbour — because axis-aligned
+    /// edges look the same with or without anti-aliasing; diagonals and curves are where blending
+    /// shows. Anti-aliasing leaves one-off blend shades there; pixel art only uses colors that also
+    /// appear in flat runs (a pixel equal to both its horizontal or both its vertical neighbours).
+    /// True if at least 95% of stair pixels have such a "run" color (and there are enough to judge).
+    public static func looksLikePixelArt(_ bitmap: Bitmap, alphaThreshold: UInt8 = 128) -> Bool {
+        let b = downsample(bitmap, to: 512)
+        let w = b.width, h = b.height
+        func key(_ p: RGBA) -> UInt32 { p.a < alphaThreshold ? .max : p.rgbKey }
+        func differs(_ p: RGBA, _ q: RGBA) -> Bool {
+            if (p.a < alphaThreshold) != (q.a < alphaThreshold) { return true }
+            if p.a < alphaThreshold { return false }
+            return max(abs(Int(p.r) - Int(q.r)), abs(Int(p.g) - Int(q.g)), abs(Int(p.b) - Int(q.b))) >= 16
+        }
+        var runColors = Set<UInt32>()
+        for y in 0..<h {
+            for x in 0..<w {
+                let k = key(b[x, y])
+                if (x > 0 && x < w - 1 && key(b[x - 1, y]) == k && key(b[x + 1, y]) == k)
+                    || (y > 0 && y < h - 1 && key(b[x, y - 1]) == k && key(b[x, y + 1]) == k) { runColors.insert(k) }
+            }
+        }
+        var edges = 0, hard = 0
+        for y in 0..<h {
+            for x in 0..<w {
+                let p = b[x, y]
+                let horizontal = (x > 0 && differs(p, b[x - 1, y])) || (x < w - 1 && differs(p, b[x + 1, y]))
+                let vertical = (y > 0 && differs(p, b[x, y - 1])) || (y < h - 1 && differs(p, b[x, y + 1]))
+                guard horizontal && vertical else { continue }
+                edges += 1
+                if runColors.contains(key(p)) { hard += 1 }
+            }
+        }
+        return edges >= 8 && Double(hard) >= 0.95 * Double(edges)
     }
 
     /// Nearest-neighbor downsample so the long side is at most `maxSide`.

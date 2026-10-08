@@ -10,11 +10,13 @@ struct VectorizeCommand: ParsableCommand {
 
     enum ModeChoice: String, ExpressibleByArgument, CaseIterable { case auto, logo, photo }
     enum TraceChoice: String, ExpressibleByArgument, CaseIterable { case auto, shared, stacked }
+    enum SwitchChoice: String, ExpressibleByArgument, CaseIterable { case auto, on, off }
 
     @Argument(help: "Input image (PNG, JPEG, HEIC, TIFF, …).") var input: String
     @Option(name: .shortAndLong, help: "Output SVG path (default: the input name with .svg).") var output: String?
     @Option(help: "Pipeline: auto, logo or photo.") var mode: ModeChoice = .auto
     @Option(help: "Tracing: auto, shared or stacked.") var trace: TraceChoice = .auto
+    @Option(help: "Trace exactly along pixel edges: auto (on for pixel art), on or off.") var pixels: SwitchChoice = .auto
     @Option(help: "Number of colors.") var colors: Int?
     @Option(help: "Detail 0–1 (higher keeps more nodes).") var detail: Double?
     @Option(help: "Smoothness 0–1 (higher rounds more corners).") var smoothness: Double?
@@ -34,6 +36,11 @@ struct VectorizeCommand: ParsableCommand {
         case .auto: nil
         case .shared: .sharedEdges
         case .stacked: .stacked
+        }
+        options.exactPixels = switch pixels {
+        case .auto: nil
+        case .on: true
+        case .off: false
         }
         options.advanced.maxProcessingDimension = maxSize
         options.advanced.minProcessingDimension = minSize

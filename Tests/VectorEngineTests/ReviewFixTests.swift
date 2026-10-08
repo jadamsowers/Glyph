@@ -21,9 +21,14 @@ import UniformTypeIdentifiers
     // Review #2: neighbouring (non-nested) shapes in stacked mode must not let the background
     // bleed through their shared edge when rendered with anti-aliasing.
     @Test func stackedSiblingsHaveNoSeams() throws {
+        // Anti-aliased (4×4 supersampled), so it's traced with smoothing rather than as pixel art.
         let b = Bitmap(width: 48, height: 32) { x, y in
-            let wave = 16 + 6 * sin(Double(x) / 5)
-            return Double(y) < wave ? TestImages.red : TestImages.blue
+            var n = 0
+            for sy in 0..<4 { for sx in 0..<4 {
+                let px = Double(x) + (Double(sx) + 0.5) / 4, py = Double(y) + (Double(sy) + 0.5) / 4
+                if py < 16 + 6 * sin(px / 5) { n += 1 }
+            } }
+            return TestImages.blend(TestImages.red, TestImages.blue, Double(n) / 16)
         }
         let r = try #require(try Pipeline.run(input: InputImage(bitmap: b), options: Options(tracing: .stacked)).result)
         func worstAlpha(_ seam: Double) -> UInt8 {
