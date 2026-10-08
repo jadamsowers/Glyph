@@ -40,14 +40,18 @@ struct CanvasView: View {
     private func content(stage: Stage, state: PipelineState, size: CGSize) -> some View {
         let fit = fittedSize(state: state, in: size)
         if stage == .svg, let original = model.original, let vector = model.pictures[.svg] {
+            // Vector on the left of the divider, original on the right (labelled), clipped
+            // explicitly so the sides can't be confused.
             ZStack(alignment: .leading) {
-                Image(decorative: vector, scale: 1).resizable().interpolation(.high)
                 Image(decorative: original, scale: 1).resizable().interpolation(.high)
-                    .mask(alignment: .leading) { Rectangle().frame(width: fit.width * split) }
+                Image(decorative: vector, scale: 1).resizable().interpolation(.high)
+                    .clipShape(LeadingFraction(fraction: split))
                 CompareHandle()
                     .offset(x: fit.width * split - 1)
             }
             .frame(width: fit.width, height: fit.height)
+            .overlay(alignment: .bottomLeading) { CompareLabel(text: "Vector").padding(8).opacity(split > 0.12 ? 1 : 0) }
+            .overlay(alignment: .bottomTrailing) { CompareLabel(text: "Original").padding(8).opacity(split < 0.88 ? 1 : 0) }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onChanged { split = max(0, min(1, $0.location.x / fit.width)) })
             .id(stage)
@@ -90,7 +94,21 @@ struct CanvasView: View {
     }
 }
 
-/// The wipe divider between original and vector; dragging anywhere on the image moves it.
+/// The left `fraction` of a rect.
+struct LeadingFraction: Shape {
+    var fraction: Double
+    func path(in rect: CGRect) -> Path { Path(CGRect(x: rect.minX, y: rect.minY, width: rect.width * fraction, height: rect.height)) }
+}
+
+struct CompareLabel: View {
+    var text: String
+    var body: some View {
+        Text(text).font(.caption.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 3)
+            .background(.regularMaterial, in: .capsule)
+    }
+}
+
+/// The wipe divider between vector and original; dragging anywhere on the image moves it.
 struct CompareHandle: View {
     var body: some View {
         Rectangle()

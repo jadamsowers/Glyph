@@ -55,6 +55,20 @@ struct InspectorView: View {
                            auto: autoSpeck, range: 0...200, step: 1, format: "%.0f px")
             }
 
+            Section("Reduce") {
+                AutoSlider(title: "Simplify", value: $model.options.simplify, auto: 0, range: 0...1, step: 0.05, format: "%.2f")
+                    .help("Merge curve segments while the visible change stays small")
+                HStack {
+                    Text("Display size")
+                    Spacer()
+                    TextField("full", value: $model.options.displaySize, format: .number)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 70)
+                    Text("px").foregroundStyle(.secondary)
+                }
+                .help("Long side the SVG will be shown at; detail invisible at that size is dropped. Empty = full size.")
+            }
+
             Section {
                 DisclosureGroup("Advanced") {
                     AdvancedOptionsView(advanced: $model.options.advanced, resolved: model.state?.resolved)
@@ -68,6 +82,8 @@ struct InspectorView: View {
                     LabeledContent("Paths", value: "\(result.stats.pathCount)")
                     LabeledContent("Segments", value: "\(result.stats.segmentCount)")
                     LabeledContent("SVG size", value: ByteCountFormatter.string(fromByteCount: Int64(result.stats.byteCount), countStyle: .file))
+                    LabeledContent("Visible difference", value: String(format: "%.1f%%", result.stats.visibleDifference * 100))
+                        .help("Share of pixels that look different (ΔE > 10) from the source when rendered")
                     HStack {
                         Button("Save SVG…") { model.saveSVG() }
                         Button("Copy") { model.copySVG() }
@@ -152,6 +168,8 @@ struct AdvancedOptionsView: View {
             row("Min color share", $advanced.minColorShare, 0...0.05)
             row("Blend slack", $advanced.blendSlack, 0...0.5)
             row("Blend keep share", $advanced.blendKeepShare, 0...0.2)
+            Toggle("Contrast-weighted tolerance", isOn: $advanced.contrastWeighting)
+            row("Contrast reference (ΔE)", $advanced.contrastReference, 5...80)
             Picker("Pre-filter", selection: $advanced.prefilter) {
                 Text("Auto").tag(Bool?.none)
                 Text("On").tag(Bool?.some(true))

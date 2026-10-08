@@ -69,6 +69,15 @@ import Testing
         #expect(counts[0] > counts[1] && counts[1] > counts[2], "\(counts)")
     }
 
+    @Test func simplifyNeverCutsTheImageBorder() throws {
+        let b = TestImages.photoLike(size: 64)
+        var o = Options(tracing: .sharedEdges, simplify: 1)
+        o.advanced.contrastWeighting = false
+        let r = try #require(try run(b, o).result)
+        let raster = ShapeRenderer.rasterize(r.shapes, width: 64, height: 64, antialias: false, background: TestImages.magenta)
+        for (x, y) in [(0, 0), (63, 0), (0, 63), (63, 63)] { #expect(raster[x, y] != TestImages.magenta, "corner (\(x),\(y)) uncovered") }
+    }
+
     @Test func simplifyZeroChangesNothing() throws {
         let b = TestImages.photoLike(size: 48)
         #expect(try run(b).result!.svg == run(b, Options(simplify: 0)).result!.svg)
@@ -80,5 +89,13 @@ import Testing
         let lots = try #require(try run(b, Options(simplify: 1)).result).stats.visibleDifference
         #expect(none >= 0 && none < 0.5)
         #expect(lots > none)
+    }
+}
+
+extension PerceptualTests {
+    // Regression: the seam underlay must be at least one display pixel wide when shown small.
+    @Test func seamUnderlayCoversADisplayPixel() throws {
+        let r = try #require(try run(TestImages.photoLike(size: 64), Options(tracing: .stacked, displaySize: 16)).result)
+        #expect(r.seamStroke >= 4)   // 64 px shown at 16 px: one display pixel = 4 output px
     }
 }

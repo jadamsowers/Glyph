@@ -10,10 +10,11 @@ enum Perceptual {
         return min(cap, max(1, reference / max(Lab(a).distance(to: Lab(b)), 1e-6)))
     }
 
-    /// Visibility weight of a boundary for simplification costs: ΔE / reference, at most 1.
+    /// Visibility weight of a boundary for simplification costs: ΔE / reference, within 0.6…1.
+    /// The floor keeps faint edges from bowing visibly: shape distortion shows even at low contrast.
     static func visibility(_ a: RGBA?, _ b: RGBA?, reference: Double) -> Double {
         guard let a, let b else { return 1 }
-        return min(1, Lab(a).distance(to: Lab(b)) / reference)
+        return max(0.6, min(1, Lab(a).distance(to: Lab(b)) / reference))
     }
 
     /// The two colors each chain separates (nil = transparency / outside).
@@ -24,10 +25,14 @@ enum Perceptual {
     }
 
     /// Fraction of pixels whose rendered color differs visibly (ΔE > 10, or opaque vs transparent)
-    /// from `reference`, compared at most 512 px on the long side.
-    static func visibleDifference(_ shapes: [VectorShape], outputWidth: Int, outputHeight: Int, reference: Bitmap) -> Double {
-        let s = min(1, 512 / Double(max(reference.width, reference.height)))
+    /// from `reference`, compared with the long side at `compareSize` (at most 512 px) — the
+    /// display size when one is set, since that's where the difference would be seen.
+    static func visibleDifference(_ shapes: [VectorShape], outputWidth: Int, outputHeight: Int, reference: Bitmap,
+                                  compareSize: Int = 512) -> Double {
+        let s = min(1, Double(min(512, max(8, compareSize))) / Double(max(reference.width, reference.height)))
         let w = max(1, Int((Double(reference.width) * s).rounded())), h = max(1, Int((Double(reference.height) * s).rounded()))
+        // What a display shows at that size: a smooth (area-averaging) downscale of the source.
+        let shown = w == reference.width && h == reference.height ? reference : Bitmap(cgImage: reference.makeCGImage(), width: w, height: h)
         let rendered = Bitmap.render(width: w, height: h) { ctx in
             ctx.scaleBy(x: Double(w) / Double(outputWidth), y: Double(h) / Double(outputHeight))
             ShapeRenderer.fill(shapes, in: ctx)
@@ -40,7 +45,7 @@ enum Perceptual {
         var differing = 0
         for y in 0..<h {
             for x in 0..<w {
-                let a = rendered[x, y], b = reference[min(reference.width - 1, x * reference.width / w), min(reference.height - 1, y * reference.height / h)]
+                let a = rendered[x, y], b = shown[x, y]
                 let aOpaque = a.a >= 128, bOpaque = b.a >= 128
                 if aOpaque != bOpaque || (aOpaque && lab(a).distance(to: lab(b)) > 10) { differing += 1 }
             }

@@ -21,6 +21,8 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Detail 0–1 (higher keeps more nodes).") var detail: Double?
     @Option(help: "Smoothness 0–1 (higher rounds more corners).") var smoothness: Double?
     @Option(help: "Merge regions smaller than this many pixels.") var speck: Int?
+    @Option(help: "Perceptual simplification 0–1 (merge segments while the visible change stays small).") var simplify: Double?
+    @Option(help: "Long side (px) the SVG will be shown at; drops detail invisible at that size.") var displaySize: Int?
     @Option(help: "Longest side used for processing, in pixels.") var maxSize: Int = 2000
     @Option(help: "Upscale images whose long side is below this before tracing (0 = never).") var minSize: Int = 256
     @Option(help: "Write a PNG picture of every pipeline stage into this directory.") var stages: String?
@@ -42,6 +44,8 @@ struct VectorizeCommand: ParsableCommand {
         case .on: true
         case .off: false
         }
+        options.simplify = simplify
+        options.displaySize = displaySize
         options.advanced.maxProcessingDimension = maxSize
         options.advanced.minProcessingDimension = minSize
 
@@ -72,7 +76,7 @@ struct VectorizeCommand: ParsableCommand {
         if verbose, let a = state.analysis, let r = state.resolved {
             print("kind: \(r.kind.rawValue) (detected \(a.kind.rawValue): \(a.significantColors) colors, gradient \(String(format: "%.2f", a.gradientFraction)))")
             print("tracing: \(r.output.tracing.rawValue), palette: \(state.quantized?.palette.count ?? 0) colors, processed at \(image.bitmap.width)×\(image.bitmap.height)")
-            print("paths: \(result.stats.pathCount), segments: \(result.stats.segmentCount), bytes: \(result.stats.byteCount)")
+            print("paths: \(result.stats.pathCount), segments: \(result.stats.segmentCount), bytes: \(result.stats.byteCount), visible difference: \(String(format: "%.1f%%", result.stats.visibleDifference * 100))")
         }
         print(outURL.path)
     }

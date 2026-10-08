@@ -189,17 +189,22 @@ public enum Pipeline {
                                          multipliers: multipliers(s, reference: p.contrastReference))
             let colors = Perceptual.chainColors(s.topology!, s.segmentation!.regions)
             let visibility = colors.map { Perceptual.visibility($0.0, $0.1, reference: p.contrastReference ?? 30) }
-            s.curves = Simplifier.reduce(curves, visibility: visibility, params: p)
+            s.curves = Simplifier.reduce(curves, visibility: visibility, params: p,
+                                         bounds: (s.input.bitmap.width, s.input.bitmap.height))
         case .svg:
             let r = s.resolved!, input = s.input
             let shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
                 .map { $0.scaled(input.scaleX, input.scaleY) }
-            // Stacked output gets a one-processing-pixel underlay stroke to hide sibling seams.
-            let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY) : 0
+            // Stacked output gets an underlay stroke to hide sibling seams: at least one processing
+            // pixel, and at least one display pixel when shown smaller (output units throughout).
+            let longSide = Double(max(input.originalWidth, input.originalHeight))
+            let displayPixel = s.options.displaySize.map { longSide / Double(max(1, min(Int(longSide), $0))) } ?? 1
+            let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY, displayPixel) : 0
             var result = VectorResult(shapes: shapes, width: input.originalWidth, height: input.originalHeight,
                                       precision: r.output.precision, seamStroke: seam)
             result.stats.visibleDifference = Perceptual.visibleDifference(
-                shapes, outputWidth: input.originalWidth, outputHeight: input.originalHeight, reference: s.prefiltered!)
+                shapes, outputWidth: input.originalWidth, outputHeight: input.originalHeight, reference: s.prefiltered!,
+                compareSize: s.options.displaySize ?? 512)
             s.result = result
         }
     }
