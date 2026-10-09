@@ -44,7 +44,10 @@ struct CanvasView: View {
         let fit = fittedSize(width: Double(vector.width), height: Double(vector.height), in: size)
         if let original = model.original, !model.isReoriented {
             ZStack(alignment: .leading) {
+                // Each side shows only its own image, so the original never shows through
+                // transparent parts of the vector (e.g. between halftone dots).
                 Image(decorative: original, scale: 1).resizable().interpolation(.high)
+                    .clipShape(LeadingFraction(fraction: split, trailing: true))
                 Image(decorative: vector, scale: 1).resizable().interpolation(.high)
                     .clipShape(LeadingFraction(fraction: split))
                 CompareHandle()
@@ -89,10 +92,15 @@ struct CanvasView: View {
     }
 }
 
-/// The left `fraction` of a rect.
+/// The left `fraction` of a rect, or (with `trailing`) everything to the right of it.
 struct LeadingFraction: Shape {
     var fraction: Double
-    func path(in rect: CGRect) -> Path { Path(CGRect(x: rect.minX, y: rect.minY, width: rect.width * fraction, height: rect.height)) }
+    var trailing = false
+    func path(in rect: CGRect) -> Path {
+        let x = rect.width * fraction
+        return Path(trailing ? CGRect(x: rect.minX + x, y: rect.minY, width: rect.width - x, height: rect.height)
+                             : CGRect(x: rect.minX, y: rect.minY, width: x, height: rect.height))
+    }
 }
 
 struct CompareLabel: View {
