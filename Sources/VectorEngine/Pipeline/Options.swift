@@ -50,6 +50,8 @@ public struct OutputParams: Sendable, Equatable {
     public var dpi: Double? = nil
     /// Emit a halftone screen instead of traced shapes (cell size in processing px).
     public var halftone: Halftone? = nil
+    /// Emit stroked centerlines of the ink instead of filled outlines.
+    public var centerline = false
 }
 
 /// Concrete values for every stage, after auto choices are filled in from the analysis.
@@ -135,6 +137,9 @@ public struct Options: Sendable, Equatable {
     public var dpi: Double?
     /// Vector halftone instead of traced shapes (nil = trace).
     public var halftone: Halftone?
+    /// Line art: single stroked paths down the middle of strokes. Implies black-and-white
+    /// (default `Monochrome()` when `monochrome` is nil).
+    public var centerline = false
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -147,6 +152,7 @@ public struct Options: Sendable, Equatable {
     }
 
     public func resolved(with analysis: Analysis) -> ResolvedOptions {
+        let monochrome = self.monochrome ?? (centerline ? Monochrome() : nil)
         let kind = monochrome != nil ? .logo : (self.kind ?? analysis.kind)
         let isLogo = kind == .logo
         let a = advanced
@@ -196,7 +202,7 @@ public struct Options: Sendable, Equatable {
                                  flipHorizontal: flipHorizontal, flipVertical: flipVertical,
                                  rotation: ((Int((Double(rotation) / 90).rounded()) % 4 + 4) % 4) * 90,
                                  dpi: dpi.flatMap { $0 > 0 ? $0 : nil },
-                                 halftone: halftone))
+                                 halftone: halftone, centerline: centerline))
     }
 }
 

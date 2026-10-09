@@ -207,7 +207,9 @@ public enum Pipeline {
         case .svg:
             let r = s.resolved!, input = s.input
             var shapes: [VectorShape]
-            if let h = r.output.halftone {
+            if r.output.centerline, let mono = r.quantize.monochrome {
+                shapes = Centerline.trace(s.quantized!, ink: mono.ink, params: .init(tolerance: r.curve.tolerance))
+            } else if let h = r.output.halftone {
                 // Cell size is given in original px; the screen is built on the processed bitmap.
                 shapes = HalftoneGenerator.shapes(s.prefiltered!, cell: max(1, h.cellSize / input.scaleX), h)
             } else {

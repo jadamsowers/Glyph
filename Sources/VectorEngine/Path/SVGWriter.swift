@@ -40,7 +40,12 @@ enum SVGWriter {
         guard seamStroke > 0, !shapes.isEmpty else {
             out += ">\n"
             for s in shapes {
-                out += "<path fill=\"\(s.color.hex)\" d=\"\(pathData(s.subpaths, precision: precision))\"/>\n"
+                if let width = s.stroke {
+                    let w = format(Int((width * 100).rounded()), precision: 2)
+                    out += "<path fill=\"none\" stroke=\"\(s.color.hex)\" stroke-width=\"\(w)\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"\(pathData(s.subpaths, precision: precision))\"/>\n"
+                } else {
+                    out += "<path fill=\"\(s.color.hex)\" d=\"\(pathData(s.subpaths, precision: precision))\"/>\n"
+                }
             }
             return out + "</svg>\n"
         }
@@ -82,7 +87,7 @@ enum SVGWriter {
                 case .line(let to):
                     let tx = q(to.x), ty = q(to.y)
                     if tx == cx && ty == cy { continue }
-                    if i == sp.segments.count - 1 && tx == sx && ty == sy { continue }   // z closes it
+                    if sp.isClosed && i == sp.segments.count - 1 && tx == sx && ty == sy { continue }   // z closes it
                     emit("l"); num(tx - cx); num(ty - cy)
                     cx = tx; cy = ty
                 case .cubic(let c1, let c2, let to):
@@ -92,7 +97,7 @@ enum SVGWriter {
                     cx = tx; cy = ty
                 }
             }
-            emit("z")
+            if sp.isClosed { emit("z") }
         }
         return d
     }

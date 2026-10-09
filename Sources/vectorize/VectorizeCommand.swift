@@ -48,6 +48,7 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Flip the output: none, horizontal, vertical or both.") var flip: FlipChoice = .none
     @Option(help: "Rotate the output clockwise by 0, 90, 180 or 270 degrees.") var rotate: Int = 0
     @Option(help: "Physical size: pixels per inch (sets width/height in inches).") var dpi: Double?
+    @Flag(help: "Line art: trace single stroked centerlines instead of filled outlines (implies --mono).") var centerline = false
     @Option(help: "Vector halftone with this cell size in pixels, instead of tracing.") var halftone: Double?
     @Option(help: "Halftone screen angle in degrees.") var halftoneAngle: Double = 45
     @Option(help: "Halftone shape: dot or line.") var halftoneShape: HalftoneShape = .dot
@@ -87,6 +88,10 @@ struct VectorizeCommand: ParsableCommand {
             case .paper: .separateInk
             }
             options.monochrome = Monochrome(threshold: threshold, invert: invertInk, ink: inkColor, background: backgroundColor, turnPolicy: policy)
+        }
+        options.centerline = centerline
+        if centerline && options.monochrome == nil {
+            options.monochrome = Monochrome(threshold: threshold, invert: invertInk, ink: inkColor, background: backgroundColor)
         }
         if let halftone {
             options.halftone = Halftone(cellSize: halftone, angle: halftoneAngle, shape: halftoneShape == .dot ? .dot : .line,

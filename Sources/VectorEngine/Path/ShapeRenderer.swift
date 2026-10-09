@@ -11,7 +11,7 @@ public enum ShapeRenderer {
                 case .cubic(let c1, let c2, let to): p.addCurve(to: cg(to), control1: cg(c1), control2: cg(c2))
                 }
             }
-            p.closeSubpath()
+            if sp.isClosed { p.closeSubpath() }
         }
         return p
     }
@@ -31,8 +31,16 @@ public enum ShapeRenderer {
         }
         for s in shapes {
             ctx.addPath(path(for: s))
-            ctx.setFillColor(cgColor(s.color))
-            ctx.fillPath(using: .evenOdd)
+            if let width = s.stroke {
+                ctx.setStrokeColor(cgColor(s.color))
+                ctx.setLineWidth(width)
+                ctx.setLineCap(.round)
+                ctx.setLineJoin(.round)
+                ctx.strokePath()
+            } else {
+                ctx.setFillColor(cgColor(s.color))
+                ctx.fillPath(using: .evenOdd)
+            }
         }
     }
 

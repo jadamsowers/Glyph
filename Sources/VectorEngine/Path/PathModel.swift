@@ -49,14 +49,27 @@ public struct Curve: Sendable, Equatable {
 }
 
 /// A closed outline; its last segment ends at `start`.
+/// An outline; closed subpaths' last segment ends at `start`.
 public struct Subpath: Sendable, Equatable {
     public var start: Vec2
     public var segments: [PathSegment]
+    /// Open subpaths (centerline strokes) are not closed back to `start`.
+    public var isClosed: Bool = true
+
+    public init(start: Vec2, segments: [PathSegment], isClosed: Bool = true) {
+        self.start = start; self.segments = segments; self.isClosed = isClosed
+    }
 }
 
 public struct VectorShape: Sendable, Equatable {
     public var color: RGBA
     public var subpaths: [Subpath]
+    /// When set, the shape is stroked with this width (round caps and joins) instead of filled.
+    public var stroke: Double? = nil
+
+    public init(color: RGBA, subpaths: [Subpath], stroke: Double? = nil) {
+        self.color = color; self.subpaths = subpaths; self.stroke = stroke
+    }
 
     /// Applies `f` to every point (an affine map, so control points transform exactly).
     func mapped(_ f: (Vec2) -> Vec2) -> VectorShape {
@@ -66,13 +79,13 @@ public struct VectorShape: Sendable, Equatable {
                 case .line(let p): .line(to: f(p))
                 case .cubic(let c1, let c2, let p): .cubic(c1: f(c1), c2: f(c2), to: f(p))
                 }
-            })
-        })
+            }, isClosed: sp.isClosed)
+        }, stroke: stroke)
     }
 
     func scaled(_ sx: Double, _ sy: Double) -> VectorShape {
         VectorShape(color: color, subpaths: subpaths.map {
-            Subpath(start: $0.start.scaled(sx, sy), segments: $0.segments.map { $0.scaled(sx, sy) })
-        })
+            Subpath(start: $0.start.scaled(sx, sy), segments: $0.segments.map { $0.scaled(sx, sy) }, isClosed: $0.isClosed)
+        }, stroke: stroke.map { $0 * (sx + sy) / 2 })
     }
 }
