@@ -7,14 +7,19 @@ public struct PrefilterParams: Sendable, Equatable {
     public var alphaThreshold: UInt8 = 128
     /// Transparent margin added on every side (processing px).
     public var border = 0
+    public var adjust = Adjustments()
+    /// Median denoise radius (processing px); 0 = off.
+    public var medianRadius = 0
 
     public init(enabled: Bool) { self.enabled = enabled }
 }
 
 enum Prefilter {
     static func apply(_ b: Bitmap, params p: PrefilterParams) -> Bitmap {
-        let filtered = p.enabled && p.radius > 0 ? bilateral(b, radius: p.radius, sigmaColor: p.sigmaColor, alphaThreshold: p.alphaThreshold) : b
-        return filtered.padded(by: p.border)
+        var img = adjust(b, p.adjust)
+        img = median(img, radius: p.medianRadius, alphaThreshold: p.alphaThreshold)
+        if p.enabled && p.radius > 0 { img = bilateral(img, radius: p.radius, sigmaColor: p.sigmaColor, alphaThreshold: p.alphaThreshold) }
+        return img.padded(by: p.border)
     }
 
     /// Edge-preserving blur: each neighbor is weighted by spatial distance and color similarity.

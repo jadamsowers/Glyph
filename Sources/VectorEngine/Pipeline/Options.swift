@@ -114,6 +114,10 @@ public struct Options: Sendable, Equatable {
     public var monochrome: Monochrome?
     /// Transparent margin added around the image (original px), e.g. so shapes touching the edge close.
     public var border = 0
+    /// Tone and color adjustments before tracing.
+    public var adjust = Adjustments()
+    /// Median denoise radius (original px, 0–3); 0 = off. Good for JPEG and scan noise.
+    public var denoise = 0
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -139,6 +143,8 @@ public struct Options: Sendable, Equatable {
         prefilter.radius = a.prefilterRadius
         prefilter.sigmaColor = a.prefilterSigmaColor
         prefilter.alphaThreshold = a.alphaThreshold
+        prefilter.adjust = adjust
+        prefilter.medianRadius = max(0, min(3, denoise))
 
         var quantize = QuantizeParams(kind: kind, colorCount: colors)
         quantize.alphaThreshold = a.alphaThreshold
@@ -180,6 +186,8 @@ extension ResolvedOptions {
     func adjusted(forUpscale factor: Int) -> ResolvedOptions {
         guard factor > 1 else { return self }
         var r = self
+        // A source pixel is `factor` px wide now, but a window past 13×13 gets slow for little gain.
+        r.prefilter.medianRadius = min(6, r.prefilter.medianRadius * factor)
         let f = Double(factor) / 2
         r.polygon.tolerance *= f
         r.polygon.straightTolerance *= f
