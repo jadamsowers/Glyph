@@ -77,6 +77,9 @@ public enum StageRenderer {
             }
         case .svg:
             guard let r = s.result else { return nil }
+            // The result may be rotated or bordered: size the picture from its own dimensions.
+            let k = scale * Double(s.input.bitmap.width) / Double(s.input.originalWidth)
+            let w = max(1, Int((Double(r.width) * k).rounded())), h = max(1, Int((Double(r.height) * k).rounded()))
             return draw(w, h) { ctx in
                 ctx.scaleBy(x: Double(w) / Double(r.width), y: Double(h) / Double(r.height))
                 ShapeRenderer.fill(r.shapes, seamStroke: r.seamStroke, in: ctx)

@@ -58,6 +58,18 @@ public struct VectorShape: Sendable, Equatable {
     public var color: RGBA
     public var subpaths: [Subpath]
 
+    /// Applies `f` to every point (an affine map, so control points transform exactly).
+    func mapped(_ f: (Vec2) -> Vec2) -> VectorShape {
+        VectorShape(color: color, subpaths: subpaths.map { sp in
+            Subpath(start: f(sp.start), segments: sp.segments.map { seg in
+                switch seg {
+                case .line(let p): .line(to: f(p))
+                case .cubic(let c1, let c2, let p): .cubic(c1: f(c1), c2: f(c2), to: f(p))
+                }
+            })
+        })
+    }
+
     func scaled(_ sx: Double, _ sy: Double) -> VectorShape {
         VectorShape(color: color, subpaths: subpaths.map {
             Subpath(start: $0.start.scaled(sx, sy), segments: $0.segments.map { $0.scaled(sx, sy) })

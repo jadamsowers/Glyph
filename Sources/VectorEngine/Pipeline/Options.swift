@@ -42,6 +42,12 @@ public struct OutputParams: Sendable, Equatable {
     public var background: RGBA? = nil
     /// Transparent margin around the image (original px).
     public var border = 0
+    public var flipHorizontal = false
+    public var flipVertical = false
+    /// Clockwise quarter turns, in degrees (0, 90, 180, 270).
+    public var rotation = 0
+    /// Physical size: pixels per inch for the SVG's width/height (nil = unitless pixels).
+    public var dpi: Double? = nil
 }
 
 /// Concrete values for every stage, after auto choices are filled in from the analysis.
@@ -118,6 +124,13 @@ public struct Options: Sendable, Equatable {
     public var adjust = Adjustments()
     /// Median denoise radius (original px, 0–3); 0 = off. Good for JPEG and scan noise.
     public var denoise = 0
+    /// Output orientation, applied to the finished vector (lossless).
+    public var flipHorizontal = false
+    public var flipVertical = false
+    /// Clockwise rotation in degrees; rounded to a quarter turn.
+    public var rotation = 0
+    /// Pixels per inch for the SVG's physical size (nil = pixels).
+    public var dpi: Double?
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -175,7 +188,10 @@ public struct Options: Sendable, Equatable {
             curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance,
                                exactPixels: exact, contrastReference: contrast, simplify: max(0, min(1, simplify ?? 0))),
             output: OutputParams(tracing: tracing ?? (isLogo || exact ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision)),
-                                 background: monochrome?.background, border: max(0, border)))
+                                 background: monochrome?.background, border: max(0, border),
+                                 flipHorizontal: flipHorizontal, flipVertical: flipVertical,
+                                 rotation: ((Int((Double(rotation) / 90).rounded()) % 4 + 4) % 4) * 90,
+                                 dpi: dpi.flatMap { $0 > 0 ? $0 : nil }))
     }
 }
 

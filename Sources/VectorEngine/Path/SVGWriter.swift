@@ -19,20 +19,23 @@ public struct VectorResult: Sendable, Equatable {
     /// Width of the same-color underlay stroke beneath all fills (0 = none); see `ShapeRenderer.fill`.
     public var seamStroke: Double
 
-    public init(shapes: [VectorShape], width: Int, height: Int, precision: Int, seamStroke: Double = 0) {
+    public init(shapes: [VectorShape], width: Int, height: Int, precision: Int, seamStroke: Double = 0, dpi: Double? = nil) {
         self.width = width
         self.height = height
         self.shapes = shapes
         self.seamStroke = seamStroke
-        svg = SVGWriter.document(shapes, width: width, height: height, precision: precision, seamStroke: seamStroke)
+        svg = SVGWriter.document(shapes, width: width, height: height, precision: precision, seamStroke: seamStroke, dpi: dpi)
         let segments = shapes.reduce(0) { $0 + $1.subpaths.reduce(0) { $0 + $1.segments.count } }
         stats = VectorStats(pathCount: shapes.count, segmentCount: segments, byteCount: svg.utf8.count)
     }
 }
 
 enum SVGWriter {
-    static func document(_ shapes: [VectorShape], width: Int, height: Int, precision: Int, seamStroke: Double = 0) -> String {
-        var out = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 \(width) \(height)\" width=\"\(width)\" height=\"\(height)\" fill-rule=\"evenodd\""
+    static func document(_ shapes: [VectorShape], width: Int, height: Int, precision: Int, seamStroke: Double = 0, dpi: Double? = nil) -> String {
+        // With a DPI the document gets a physical size in inches; the viewBox stays in pixels.
+        let (physicalW, physicalH) = dpi.map { (String(format: "%.3fin", Double(width) / $0), String(format: "%.3fin", Double(height) / $0)) }
+            ?? ("\(width)", "\(height)")
+        var out = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 \(width) \(height)\" width=\"\(physicalW)\" height=\"\(physicalH)\" fill-rule=\"evenodd\""
         guard seamStroke > 0, !shapes.isEmpty else {
             out += ">\n"
             for s in shapes {

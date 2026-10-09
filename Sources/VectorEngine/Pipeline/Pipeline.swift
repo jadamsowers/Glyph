@@ -155,6 +155,18 @@ public enum Pipeline {
         return r
     }
 
+    /// Flips, then rotates clockwise by quarter turns, in output coordinates.
+    static func orient(_ shapes: [VectorShape], width w: Int, height h: Int, _ o: OutputParams) -> ([VectorShape], Int, Int) {
+        let W = Double(w), H = Double(h)
+        let flipped = shapes.map { $0.mapped { p in Vec2(o.flipHorizontal ? W - p.x : p.x, o.flipVertical ? H - p.y : p.y) } }
+        switch o.rotation {
+        case 90: return (flipped.map { $0.mapped { Vec2(H - $0.y, $0.x) } }, h, w)
+        case 180: return (flipped.map { $0.mapped { Vec2(W - $0.x, H - $0.y) } }, w, h)
+        case 270: return (flipped.map { $0.mapped { Vec2($0.y, W - $0.x) } }, h, w)
+        default: return (flipped, w, h)
+        }
+    }
+
     /// Per-chain tolerance multipliers from the contrast across each chain (nil when disabled).
     static func multipliers(_ s: PipelineState, reference: Double?) -> [Double]? {
         guard let reference else { return nil }
@@ -207,10 +219,13 @@ public enum Pipeline {
             let longSide = Double(max(input.originalWidth, input.originalHeight))
             let displayPixel = s.options.displaySize.map { longSide / Double(max(1, min(Int(longSide), $0))) } ?? 1
             let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY, displayPixel) : 0
-            var result = VectorResult(shapes: shapes, width: outW, height: outH, precision: r.output.precision, seamStroke: seam)
-            result.stats.visibleDifference = Perceptual.visibleDifference(
-                shapes, outputWidth: outW, outputHeight: outH, reference: s.prefiltered!,
-                compareSize: s.options.displaySize ?? 512)
+            // Measure fidelity before orienting: the reference bitmap is in the unrotated frame.
+            let difference = Perceptual.visibleDifference(shapes, outputWidth: outW, outputHeight: outH, reference: s.prefiltered!,
+                                                          compareSize: s.options.displaySize ?? 512)
+            let (oriented, finalW, finalH) = orient(shapes, width: outW, height: outH, r.output)
+            var result = VectorResult(shapes: oriented, width: finalW, height: finalH, precision: r.output.precision,
+                                      seamStroke: seam, dpi: r.output.dpi)
+            result.stats.visibleDifference = difference
             s.result = result
         }
     }
