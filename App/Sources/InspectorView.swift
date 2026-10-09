@@ -82,7 +82,7 @@ struct InspectorView: View {
                     LabeledContent("Paths", value: "\(result.stats.pathCount)")
                     LabeledContent("Segments", value: "\(result.stats.segmentCount)")
                     LabeledContent("SVG size", value: ByteCountFormatter.string(fromByteCount: Int64(result.stats.byteCount), countStyle: .file))
-                    LabeledContent("Visible difference", value: String(format: "%.1f%%", result.stats.visibleDifference * 100))
+                    LabeledContent("Visible difference", value: result.stats.visibleDifference.isNaN ? "n/a" : String(format: "%.1f%%", result.stats.visibleDifference * 100))
                         .help("Share of pixels that look different (ΔE > 10) from the source when rendered")
                     HStack {
                         Button("Save SVG…") { model.saveSVG() }

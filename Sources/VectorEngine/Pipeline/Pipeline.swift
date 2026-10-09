@@ -226,8 +226,19 @@ public enum Pipeline {
             let displayPixel = s.options.displaySize.map { longSide / Double(max(1, min(Int(longSide), $0))) } ?? 1
             let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY, displayPixel) : 0
             // Measure fidelity before orienting: the reference bitmap is in the unrotated frame.
-            let difference = Perceptual.visibleDifference(shapes, outputWidth: outW, outputHeight: outH, reference: s.prefiltered!,
+            // Black-and-white is judged against its own ink/paper split; a halftone has no
+            // pixel-for-pixel reference at all.
+            let difference: Double
+            if r.output.halftone != nil {
+                difference = .nan
+            } else {
+                var reference = r.quantize.monochrome != nil ? s.quantized!.makeBitmap() : s.prefiltered!
+                if r.quantize.monochrome != nil, let bg = r.output.background {
+                    reference = Bitmap(width: reference.width, height: reference.height) { x, y in reference[x, y].a == 0 ? bg : reference[x, y] }
+                }
+                difference = Perceptual.visibleDifference(shapes, outputWidth: outW, outputHeight: outH, reference: reference,
                                                           compareSize: s.options.displaySize ?? 512)
+            }
             let (oriented, finalW, finalH) = orient(shapes, width: outW, height: outH, r.output)
             var result = VectorResult(shapes: oriented, width: finalW, height: finalH, precision: r.output.precision,
                                       seamStroke: seam, dpi: r.output.dpi)
