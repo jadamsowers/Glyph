@@ -37,13 +37,12 @@ import Testing
         }
     }
 
-    // Regression (user's 62-px icon): mostly axis-aligned edges — identical with or without
+    // Regression (a user's 62-px icon): mostly axis-aligned edges — identical with or without
     // anti-aliasing — plus an anti-aliased arrow and rounded corners. Not pixel art; upscaled.
-    @Test func usersAntialiasedIconIsNotPixelArt() throws {
-        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/icon64.png")
-        let image = try InputImage.orientedImage(contentsOf: url)
-        #expect(!Analyzer.looksLikePixelArt(Bitmap(cgImage: image)))
-        let input = InputImage(cgImage: image, maxDimension: 2000, minDimension: 256)
+    @Test func antialiasedSmallIconIsNotPixelArt() throws {
+        let icon = SyntheticFixtures.smallIcon()
+        #expect(!Analyzer.looksLikePixelArt(icon))
+        let input = InputImage(cgImage: icon.makeCGImage(), maxDimension: 2000, minDimension: 256)
         #expect(input.upscale > 1)
         let s = try Pipeline.run(input: input, options: Options())
         #expect(s.resolved?.polygon.exactPixels == false)

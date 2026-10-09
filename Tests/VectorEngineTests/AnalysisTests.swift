@@ -102,9 +102,7 @@ extension AnalysisTests {
     // Regression (user report): a UI screenshot — flat panels, anti-aliased text — is not a photo.
     // Text halos look like soft change unless soft change is required away from hard edges.
     @Test func textHeavyScreenshotIsLogo() throws {
-        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/inspector.png")
-        let image = Bitmap(cgImage: try InputImage.orientedImage(contentsOf: url))
-        let a = analyze(image)
+        let a = analyze(SyntheticFixtures.uiScreenshot())
         #expect(a.kind == .logo, "gradient \(a.gradientFraction), colors \(a.significantColors), edges \(a.edgeFraction)")
         #expect(a.gradientFraction < 0.25)        // clearly under the 0.35 cut-off (photos score ≥ 0.65)
         #expect(a.significantColors >= 8)         // panels and swatches are real colors
@@ -115,8 +113,11 @@ extension AnalysisTests {
     // Regression (user report): a clear portrait photo with large smooth areas (wall, skin) was
     // classified as a logo. Photos aren't covered by a few flat colors; logos and UI are.
     @Test func smoothPortraitIsPhoto() throws {
-        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/portrait.png")
-        let a = analyze(Bitmap(cgImage: try InputImage.orientedImage(contentsOf: url)))
+        let photo = SyntheticFixtures.smoothPhoto()
+        let a = analyze(photo)
         #expect(a.kind == .photo, "coverage \(a.paletteCoverage), gradient \(a.gradientFraction)")
+        // The stand-in reproduces the original failure: without the coverage rule it reads as a logo.
+        var noCoverage = ClassifierParams(); noCoverage.logoMinCoverage = 0
+        #expect(Analyzer.analyze(photo, params: noCoverage).kind == .logo)
     }
 }
