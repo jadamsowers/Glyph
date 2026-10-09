@@ -157,7 +157,7 @@ struct OptionalColor: View {
         HStack {
             Toggle(title, isOn: Binding(get: { color != nil }, set: { color = $0 ? (color ?? RGBA(255, 255, 255)) : nil }))
             if color != nil {
-                ColorPicker("", selection: Binding(get: { color!.color }, set: { color = RGBA($0) }), supportsOpacity: false)
+                ColorPicker("", selection: $color.or(RGBA(255, 255, 255)).color, supportsOpacity: false)
                     .labelsHidden()
             }
         }
@@ -175,5 +175,13 @@ extension RGBA {
         let ns = NSColor(color).usingColorSpace(.sRGB) ?? .black
         self.init(UInt8((ns.redComponent * 255).rounded()), UInt8((ns.greenComponent * 255).rounded()),
                   UInt8((ns.blueComponent * 255).rounded()))
+    }
+}
+
+extension Binding {
+    /// A binding to an optional's value that reads `fallback` while it is nil (instead of
+    /// force-unwrapping), so a view that outlives its value for one update can't crash.
+    func or<T>(_ fallback: T) -> Binding<T> where Value == T? {
+        Binding<T>(get: { wrappedValue ?? fallback }, set: { wrappedValue = $0 })
     }
 }

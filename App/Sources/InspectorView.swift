@@ -27,11 +27,13 @@ struct InspectorView: View {
 
             StyleSection(options: $model.options)
 
-            if let mono = Binding($model.options.monochrome) {
-                MonochromeSection(mono: mono, border: $model.options.border)
+            // Non-failable bindings: a force-unwrapping `Binding(optional)` crashes when the style
+            // switches and the old section is updated once more after the value became nil.
+            if model.options.monochrome != nil {
+                MonochromeSection(mono: $model.options.monochrome.or(Monochrome()), border: $model.options.border)
             }
-            if let halftone = Binding($model.options.halftone) {
-                HalftoneSection(halftone: halftone)
+            if model.options.halftone != nil {
+                HalftoneSection(halftone: $model.options.halftone.or(Halftone()))
             }
 
             if style == .color { Section("Pipeline") {
