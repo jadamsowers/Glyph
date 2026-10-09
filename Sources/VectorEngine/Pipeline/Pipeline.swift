@@ -206,8 +206,14 @@ public enum Pipeline {
                                          bounds: (s.input.bitmap.width, s.input.bitmap.height))
         case .svg:
             let r = s.resolved!, input = s.input
-            var shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
-                .map { $0.scaled(input.scaleX, input.scaleY) }
+            var shapes: [VectorShape]
+            if let h = r.output.halftone {
+                // Cell size is given in original px; the screen is built on the processed bitmap.
+                shapes = HalftoneGenerator.shapes(s.prefiltered!, cell: max(1, h.cellSize / input.scaleX), h)
+            } else {
+                shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
+            }
+            shapes = shapes.map { $0.scaled(input.scaleX, input.scaleY) }
             let outW = input.originalWidth + 2 * r.output.border, outH = input.originalHeight + 2 * r.output.border
             if let bg = r.output.background {
                 let w = Double(outW), h = Double(outH)

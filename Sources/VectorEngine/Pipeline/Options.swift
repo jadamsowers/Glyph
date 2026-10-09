@@ -48,6 +48,8 @@ public struct OutputParams: Sendable, Equatable {
     public var rotation = 0
     /// Physical size: pixels per inch for the SVG's width/height (nil = unitless pixels).
     public var dpi: Double? = nil
+    /// Emit a halftone screen instead of traced shapes (cell size in processing px).
+    public var halftone: Halftone? = nil
 }
 
 /// Concrete values for every stage, after auto choices are filled in from the analysis.
@@ -131,6 +133,8 @@ public struct Options: Sendable, Equatable {
     public var rotation = 0
     /// Pixels per inch for the SVG's physical size (nil = pixels).
     public var dpi: Double?
+    /// Vector halftone instead of traced shapes (nil = trace).
+    public var halftone: Halftone?
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -188,10 +192,11 @@ public struct Options: Sendable, Equatable {
             curve: CurveParams(tolerance: a.curveTolerance ?? (1.6 - 1.1 * detail), straightTolerance: a.straightTolerance,
                                exactPixels: exact, contrastReference: contrast, simplify: max(0, min(1, simplify ?? 0))),
             output: OutputParams(tracing: tracing ?? (isLogo || exact ? .sharedEdges : .stacked), precision: max(0, min(4, a.precision)),
-                                 background: monochrome?.background, border: max(0, border),
+                                 background: halftone.map { $0.background } ?? monochrome?.background, border: max(0, border),
                                  flipHorizontal: flipHorizontal, flipVertical: flipVertical,
                                  rotation: ((Int((Double(rotation) / 90).rounded()) % 4 + 4) % 4) * 90,
-                                 dpi: dpi.flatMap { $0 > 0 ? $0 : nil }))
+                                 dpi: dpi.flatMap { $0 > 0 ? $0 : nil },
+                                 halftone: halftone))
     }
 }
 
