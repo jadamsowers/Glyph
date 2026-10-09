@@ -7,20 +7,14 @@ struct ContentView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                Group {
-                    if model.input == nil {
-                        EmptyStateView(isTargeted: isDropTargeted)
-                    } else {
-                        CanvasView()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if model.input != nil {
-                    Divider()
-                    StageTimelineView()
+            Group {
+                if model.input == nil {
+                    EmptyStateView(isTargeted: isDropTargeted)
+                } else {
+                    CanvasView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             InspectorView()
                 .frame(width: 280)

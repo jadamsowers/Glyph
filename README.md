@@ -6,7 +6,7 @@ A macOS app (and command-line tool) that turns bitmap images into clean, compact
 - **Photos** are posterized into smooth stacked regions.
 - **Pixel art** is detected and traced exactly along pixel edges.
 - **Small images** (under 256 px) are smoothly upscaled first, so anti-aliased edges trace with sub-pixel accuracy.
-- **Black-and-white** mode (ink on transparent, potrace-style), **vector halftone** (dot or line screens), contrast-aware **perceptual simplification**, and **display-size** optimization.
+- **Black-and-white** mode (ink on transparent, potrace-style), **centerline** tracing for line art (single stroked paths), **vector halftone** (dot or line screens), tone **adjustments** and median denoise, lossless **flip/rotate/DPI**, contrast-aware **perceptual simplification**, and **display-size** optimization.
 
 ## Layout
 
@@ -36,5 +36,7 @@ vectorize logo.png -o logo.svg --verbose
 vectorize photo.jpg --simplify 0.5 --display-size 256
 vectorize scan.png --mono --threshold 0.55 --turn-policy minority
 vectorize portrait.jpg --halftone 6 --halftone-angle 45
+vectorize sketch.png --centerline --ink '#1a1a1a'
+vectorize logo.png --rotate 90 --flip horizontal --dpi 300
 vectorize --help
 ```

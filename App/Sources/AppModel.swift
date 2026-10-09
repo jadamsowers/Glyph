@@ -4,81 +4,92 @@ import UniformTypeIdentifiers
 import Observation
 import VectorEngine
 
-/// Holds the open image, the current options and the latest pipeline state, and re-runs the
-/// pipeline (reusing unchanged stages) whenever the options change.
+/// Holds the open image, the current options and the latest result, and re-runs the pipeline
+/// (reusing unchanged stages) whenever the options change. Only the finished vector is shown.
 @MainActor
 @Observable
 final class AppModel {
     private(set) var input: InputImage?
     private(set) var sourceName = ""
+    /// The source as opened (EXIF-oriented), for the compare view.
     private(set) var original: CGImage?
     private(set) var state: PipelineState?
-    /// Stages finished in the current run, in order; drives the timeline's "lighting up".
-    private(set) var completed: [Stage] = []
     private(set) var isRunning = false
-    /// A rendered picture per finished stage (rendered off the main thread).
-    private(set) var pictures: [Stage: CGImage] = [:]
+    /// The finished vector, rendered off the main thread. The previous one stays visible while a
+    /// re-run is in progress.
+    private(set) var vectorPicture: CGImage?
     var errorMessage: String?
-
-    /// The stage shown on the canvas; nil follows the newest finished stage.
-    var selectedStage: Stage?
-    private(set) var isReplaying = false
 
     var options = Options() {
         didSet { if options != oldValue { scheduleRun() } }
     }
 
     private var runTask: Task<Void, Never>?
-    private var replayTask: Task<Void, Never>?
+    private var sourceURL: URL?
+    private var pastedImage: CGImage?
 
-    var displayedStage: Stage? { selectedStage ?? completed.last }
     var result: VectorResult? { state?.result }
+
+    /// Flips, rotations and borders change the frame, so a wipe against the original no longer lines up.
+    var isReoriented: Bool { options.flipHorizontal || options.flipVertical || options.rotation % 360 != 0 || options.border > 0 }
 
     // MARK: Loading
 
     func open(_ url: URL) {
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        do {
-            let image = try InputImage.load(contentsOf: url, maxDimension: options.advanced.maxProcessingDimension,
-                                            minDimension: minDimension)
-            load(image, name: url.deletingPathExtension().lastPathComponent,
-                 original: CGImageSourceCreateWithURL(url as CFURL, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        sourceURL = url
+        pastedImage = nil
+        reload()
     }
 
     func paste() {
         guard let image = NSImage(pasteboard: .general),
               let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { errorMessage = "The clipboard doesn't contain an image."; return }
-        load(InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension,
-                        minDimension: minDimension), name: "Pasted Image", original: cg)
+        sourceURL = nil
+        pastedImage = cg
+        reload()
+    }
+
+    /// Re-decodes the source — needed when settings that shape the input change (size limits,
+    /// exact pixels).
+    func reload() {
+        do {
+            let cg: CGImage
+            if let url = sourceURL {
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+                cg = try InputImage.orientedImage(contentsOf: url)
+                sourceName = url.deletingPathExtension().lastPathComponent
+            } else if let pastedImage {
+                cg = pastedImage
+                sourceName = "Pasted Image"
+            } else { return }
+            errorMessage = nil
+            original = cg
+            input = InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension, minDimension: minDimension)
+            state = nil
+            vectorPicture = nil
+            run()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     /// Exact pixel tracing wants the original pixels, never an upscaled blur of them.
     private var minDimension: Int { options.exactPixels == true ? 0 : options.advanced.minProcessingDimension }
 
-    private func load(_ image: InputImage, name: String, original: CGImage?) {
-        errorMessage = nil
-        input = image
-        sourceName = name
-        self.original = original ?? image.bitmap.makeCGImage()
-        state = nil
-        pictures = [:]
-        selectedStage = nil
-        run()
-    }
-
     // MARK: Running
+
+    private var loadedLimits: (Int, Int, Bool?)?
 
     private func scheduleRun() {
         runTask?.cancel()
         runTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled else { return }
-            self?.run()
+            guard let self, !Task.isCancelled else { return }
+            // Size limits and exact-pixel mode shape the input itself.
+            let limits = (options.advanced.maxProcessingDimension, options.advanced.minProcessingDimension, options.exactPixels)
+            if let loaded = loadedLimits, loaded != limits { loadedLimits = limits; reload() } else { loadedLimits = limits; run() }
         }
     }
 
@@ -87,66 +98,38 @@ final class AppModel {
     private func run() {
         guard let input else { return }
         runTask?.cancel()
+        loadedLimits = (options.advanced.maxProcessingDimension, options.advanced.minProcessingDimension, options.exactPixels)
         generation += 1
-        let gen = generation, previous = state, options = options, oldPictures = pictures
-        let longSide = Double(max(input.bitmap.width, input.bitmap.height))
-        let scale = max(1, min(4, (1600 / longSide).rounded(.down)))
-        completed = []
+        let gen = generation, previous = state, options = options
         isRunning = true
         runTask = Task.detached(priority: .userInitiated) { [weak self] in
             do {
+                var last: PipelineState?
                 for try await event in Pipeline.stream(input: input, options: options, reusing: previous) {
-                    let picture = event.reused && oldPictures[event.stage] != nil
-                        ? oldPictures[event.stage]
-                        : StageRenderer.image(for: event.stage, in: event.state, scale: scale)
                     try Task.checkCancellation()
-                    await self?.publish(event, picture: picture, generation: gen)
+                    last = event.state
                 }
-                await self?.finish(generation: gen, error: nil)
+                guard let last else { return }
+                let longSide = Double(max(last.input.bitmap.width, last.input.bitmap.height))
+                let picture = StageRenderer.image(for: .svg, in: last, scale: max(1, min(4, (1600 / longSide).rounded(.down))))
+                try Task.checkCancellation()
+                await self?.finish(last, picture: picture, generation: gen, error: nil)
             } catch is CancellationError {
             } catch {
-                await self?.finish(generation: gen, error: error)
+                await self?.finish(nil, picture: nil, generation: gen, error: error)
             }
         }
     }
 
-    private func publish(_ event: StageEvent, picture: CGImage?, generation gen: Int) {
-        guard gen == generation else { return }
-        state = event.state
-        pictures[event.stage] = picture
-        completed.append(event.stage)
-    }
-
-    private func finish(generation gen: Int, error: Error?) {
+    private func finish(_ finished: PipelineState?, picture: CGImage?, generation gen: Int, error: Error?) {
         guard gen == generation else { return }
         isRunning = false
+        if let finished { state = finished; vectorPicture = picture }
         if let error { errorMessage = error.localizedDescription }
     }
 
     func resetToAuto() {
         options = Options()
-    }
-
-    // MARK: Replay
-
-    func replay() {
-        replayTask?.cancel()
-        guard !completed.isEmpty else { return }
-        isReplaying = true
-        replayTask = Task { [weak self] in
-            for stage in Stage.allCases {
-                guard let self, !Task.isCancelled else { return }
-                self.selectedStage = stage
-                try? await Task.sleep(for: .milliseconds(stage == .svg ? 0 : 700))
-            }
-            self?.selectedStage = nil
-            self?.isReplaying = false
-        }
-    }
-
-    func stopReplay() {
-        replayTask?.cancel()
-        isReplaying = false
     }
 
     // MARK: Export

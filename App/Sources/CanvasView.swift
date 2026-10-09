@@ -1,7 +1,7 @@
 import SwiftUI
 import VectorEngine
 
-/// Shows the selected stage. On the final SVG stage a draggable divider wipes between the
+/// Shows the finished vector. A draggable divider wipes between the
 /// original bitmap (left) and the vector render (right).
 struct CanvasView: View {
     @Environment(AppModel.self) private var model
@@ -13,15 +13,13 @@ struct CanvasView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let stage = model.displayedStage
             ZStack {
                 CheckerboardBackground(dark: darkBackground)
-                if let state = model.state, let stage {
-                    content(stage: stage, state: state, size: geo.size)
+                if let vector = model.vectorPicture {
+                    content(vector, size: geo.size)
                         .scaleEffect(zoom * pinch)
-                        .animation(.easeInOut(duration: 0.35), value: stage)
                 } else {
-                    ProgressView()
+                    ProgressView("Tracing…")
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -29,19 +27,22 @@ struct CanvasView: View {
             .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
                 .onEnded { zoom = max(0.25, min(16, zoom * $0.magnification)) })
             .overlay(alignment: .bottomTrailing) { zoomControls.padding(10) }
-            .overlay(alignment: .topTrailing) { backgroundToggle.padding(10) }
-            .overlay(alignment: .topLeading) {
-                if let stage { Text(stage.title).font(.headline).padding(6).background(.regularMaterial, in: .rect(cornerRadius: 6)).padding(10) }
+            .overlay(alignment: .topTrailing) {
+                HStack(spacing: 8) {
+                    if model.isRunning && model.vectorPicture != nil { ProgressView().controlSize(.small) }
+                    backgroundToggle
+                }
+                .padding(10)
             }
         }
     }
 
+    /// The finished vector, with a labelled wipe against the original (vector left, original
+    /// right) — unless the output was flipped or rotated, which would misalign the two.
     @ViewBuilder
-    private func content(stage: Stage, state: PipelineState, size: CGSize) -> some View {
-        let fit = fittedSize(state: state, in: size)
-        if stage == .svg, let original = model.original, let vector = model.pictures[.svg] {
-            // Vector on the left of the divider, original on the right (labelled), clipped
-            // explicitly so the sides can't be confused.
+    private func content(_ vector: CGImage, size: CGSize) -> some View {
+        let fit = fittedSize(width: Double(vector.width), height: Double(vector.height), in: size)
+        if let original = model.original, !model.isReoriented {
             ZStack(alignment: .leading) {
                 Image(decorative: original, scale: 1).resizable().interpolation(.high)
                 Image(decorative: vector, scale: 1).resizable().interpolation(.high)
@@ -54,19 +55,13 @@ struct CanvasView: View {
             .overlay(alignment: .bottomTrailing) { CompareLabel(text: "Original").padding(8).opacity(split < 0.88 ? 1 : 0) }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onChanged { split = max(0, min(1, $0.location.x / fit.width)) })
-            .id(stage)
-            .transition(.opacity)
-        } else if let image = model.pictures[stage] {
-            Image(decorative: image, scale: 1).resizable()
-                .interpolation(stage <= .segment ? .none : .high)
+        } else {
+            Image(decorative: vector, scale: 1).resizable().interpolation(.high)
                 .frame(width: fit.width, height: fit.height)
-                .id(stage)
-                .transition(.opacity)
         }
     }
 
-    private func fittedSize(state: PipelineState, in size: CGSize) -> CGSize {
-        let w = Double(state.input.bitmap.width), h = Double(state.input.bitmap.height)
+    private func fittedSize(width w: Double, height h: Double, in size: CGSize) -> CGSize {
         let s = min((size.width - 40) / w, (size.height - 40) / h)
         return CGSize(width: max(1, w * s), height: max(1, h * s))
     }

@@ -25,7 +25,16 @@ struct InspectorView: View {
                 }
             } header: { Text("Detected") }
 
-            Section("Pipeline") {
+            StyleSection(options: $model.options)
+
+            if let mono = Binding($model.options.monochrome) {
+                MonochromeSection(mono: mono, border: $model.options.border)
+            }
+            if let halftone = Binding($model.options.halftone) {
+                HalftoneSection(halftone: halftone)
+            }
+
+            if style == .color { Section("Pipeline") {
                 Picker("Image type", selection: $model.options.kind) {
                     Text("Auto").tag(ImageKind?.none)
                     Text("Logo").tag(ImageKind?.some(.logo))
@@ -42,18 +51,22 @@ struct InspectorView: View {
                     Text("Shared edges").tag(TracingMode?.some(.sharedEdges))
                     Text("Stacked").tag(TracingMode?.some(.stacked))
                 }
-            }
+            } }
 
-            Section("Shape") {
-                AutoSlider(title: "Colors", value: $model.options.colorCount.asDouble,
-                           auto: Double(model.state?.resolved?.quantize.colorCount ?? 8), range: 2...64, step: 1, format: "%.0f")
+            if style != .halftone { Section("Shape") {
+                if style == .color {
+                    AutoSlider(title: "Colors", value: $model.options.colorCount.asDouble,
+                               auto: Double(model.state?.resolved?.quantize.colorCount ?? 8), range: 2...64, step: 1, format: "%.0f")
+                }
                 AutoSlider(title: "Detail", value: $model.options.detail,
                            auto: autoDetail, range: 0...1, step: 0.05, format: "%.2f")
                 AutoSlider(title: "Smoothness", value: $model.options.smoothness,
                            auto: autoSmoothness, range: 0...1, step: 0.05, format: "%.2f")
                 AutoSlider(title: "Speck size", value: $model.options.speckSize.asDouble,
                            auto: autoSpeck, range: 0...200, step: 1, format: "%.0f px")
-            }
+            } }
+
+            AdjustSection(adjust: $model.options.adjust, denoise: $model.options.denoise)
 
             Section("Reduce") {
                 AutoSlider(title: "Simplify", value: $model.options.simplify, auto: 0, range: 0...1, step: 0.05, format: "%.2f")
@@ -68,6 +81,8 @@ struct InspectorView: View {
                 }
                 .help("Long side the SVG will be shown at; detail invisible at that size is dropped. Empty = full size.")
             }
+
+            OutputTransformSection(options: $model.options)
 
             Section {
                 DisclosureGroup("Advanced") {
@@ -96,6 +111,8 @@ struct InspectorView: View {
             if model.isRunning { ProgressView().progressViewStyle(.linear).padding(.horizontal) }
         }
     }
+
+    private var style: OutputStyle { OutputStyle(model.options) }
 
     // The UI's detail/smoothness defaults mirror Options.resolved's per-kind defaults.
     private var isLogo: Bool { (model.state?.resolved?.kind ?? .logo) == .logo }
