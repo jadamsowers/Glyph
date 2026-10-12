@@ -26,6 +26,7 @@ struct InspectorView: View {
             } header: { Text("Detected") }
 
             StyleSection(options: $model.options)
+            BackgroundSection(removal: $model.options.removeBackground, outcome: model.result?.stats.background)
 
             // Non-failable bindings: a force-unwrapping `Binding(optional)` crashes when the style
             // switches and the old section is updated once more after the value became nil.

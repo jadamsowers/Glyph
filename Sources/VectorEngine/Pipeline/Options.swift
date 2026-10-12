@@ -140,6 +140,8 @@ public struct Options: Sendable, Equatable {
     /// Line art: single stroked paths down the middle of strokes. Implies black-and-white
     /// (default `Monochrome()` when `monochrome` is nil).
     public var centerline = false
+    /// Make the background transparent before tracing (nil = keep it).
+    public var removeBackground: BackgroundRemoval?
     public var advanced: AdvancedOptions
 
     public init(kind: ImageKind? = nil, tracing: TracingMode? = nil, colorCount: Int? = nil, detail: Double? = nil,
@@ -168,6 +170,11 @@ public struct Options: Sendable, Equatable {
         prefilter.alphaThreshold = a.alphaThreshold
         prefilter.adjust = adjust
         prefilter.medianRadius = max(0, min(3, denoise))
+        // Judged on the image itself (not a forced black-and-white kind): photos get subject lifting.
+        prefilter.background = removeBackground.map {
+            BackgroundParams(method: $0.method.resolved(for: self.kind ?? analysis.kind), tolerance: max(0, $0.tolerance),
+                             removeEnclosed: $0.removeEnclosed, minEnclosedArea: max(1, speck))
+        }
 
         var quantize = QuantizeParams(kind: kind, colorCount: colors)
         quantize.alphaThreshold = a.alphaThreshold

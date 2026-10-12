@@ -10,6 +10,8 @@ public struct PrefilterParams: Sendable, Equatable {
     public var adjust = Adjustments()
     /// Median denoise radius (processing px); 0 = off.
     public var medianRadius = 0
+    /// Background removal, run first on the untouched pixels (nil = off).
+    public var background: BackgroundParams? = nil
 
     public init(enabled: Bool) { self.enabled = enabled }
 }

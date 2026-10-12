@@ -29,6 +29,8 @@ public struct PipelineState: Sendable {
     public internal(set) var resolved: ResolvedOptions?
     public internal(set) var analysis: Analysis?
     public internal(set) var prefiltered: Bitmap?
+    /// What background removal did (nil when it is off).
+    public internal(set) var backgroundOutcome: BackgroundOutcome?
     public internal(set) var quantized: QuantizedImage?
     public internal(set) var segmentation: Segmentation?
     public internal(set) var topology: Topology?
@@ -59,7 +61,7 @@ public struct PipelineState: Sendable {
         case .analyze:
             analysis = p.analysis
             resolved = Pipeline.resolve(options, p.analysis!, input)
-        case .prefilter: prefiltered = p.prefiltered
+        case .prefilter: prefiltered = p.prefiltered; backgroundOutcome = p.backgroundOutcome
         case .quantize: quantized = p.quantized
         case .segment: segmentation = p.segmentation
         case .contours: topology = p.topology
@@ -149,6 +151,8 @@ public enum Pipeline {
         var r = options.resolved(with: analysis).adjusted(forUpscale: input.upscale)
             .adjusted(forDisplay: options.displaySize, longSide: max(input.originalWidth, input.originalHeight))
         r.prefilter.border = r.output.border * input.upscale
+        r.prefilter.background?.minEnclosedArea = max(1, r.segment.speckSize)
+        r.prefilter.background?.fringeRadius = max(2, input.upscale)
         let longOriginal = Double(max(input.originalWidth, input.originalHeight))
         let display = options.displaySize.map { min(Double($0), longOriginal) } ?? longOriginal
         r.curve.displayScale = display / Double(max(input.bitmap.width, input.bitmap.height))
@@ -184,7 +188,13 @@ public enum Pipeline {
             s.analysis = a
             s.resolved = resolve(s.options, a, s.input)
         case .prefilter:
-            s.prefiltered = Prefilter.apply(s.input.bitmap, params: s.resolved!.prefilter)
+            let p = s.resolved!.prefilter
+            var bitmap = s.input.bitmap
+            s.backgroundOutcome = nil
+            if let bg = p.background {
+                (bitmap, s.backgroundOutcome) = BackgroundRemover.remove(bitmap, bg, alphaThreshold: p.alphaThreshold)
+            }
+            s.prefiltered = Prefilter.apply(bitmap, params: p)
         case .quantize:
             s.quantized = Quantizer.quantize(s.prefiltered!, params: s.resolved!.quantize)
         case .segment:
@@ -245,6 +255,7 @@ public enum Pipeline {
             var result = VectorResult(shapes: oriented, width: finalW, height: finalH, precision: r.output.precision,
                                       seamStroke: seam, dpi: r.output.dpi)
             result.stats.visibleDifference = difference
+            result.stats.background = s.backgroundOutcome
             s.result = result
         }
     }

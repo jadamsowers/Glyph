@@ -14,6 +14,7 @@ struct VectorizeCommand: ParsableCommand {
     enum PolicyChoice: String, ExpressibleByArgument, CaseIterable { case minority, ink, paper }
     enum FlipChoice: String, ExpressibleByArgument, CaseIterable { case none, horizontal, vertical, both }
     enum HalftoneShape: String, ExpressibleByArgument, CaseIterable { case dot, line }
+    enum BackgroundChoice: String, ExpressibleByArgument, CaseIterable { case auto, solid, subject }
 
     @Argument(help: "Input image (PNG, JPEG, HEIC, TIFF, …).") var input: String
     @Option(name: .shortAndLong, help: "Output SVG path (default: the input name with .svg).") var output: String?
@@ -44,6 +45,10 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Gamma 0.2…5 (1 = unchanged).") var gamma: Double = 1
     @Flag(help: "Invert colors before tracing.") var invert = false
     @Option(help: "Median denoise radius 0–3 (for JPEG and scan noise).") var denoise: Int = 0
+    @Option(help: ArgumentHelp("Remove the background first: auto, solid (the border colour) or subject (Apple Vision).",
+                               valueName: "method")) var removeBg: BackgroundChoice?
+    @Option(help: "Background removal: colour tolerance (ΔE).") var bgTolerance: Double = 8
+    @Flag(help: "Background removal: keep enclosed background-coloured areas (e.g. inside an \"O\").") var keepEnclosed = false
     // Output
     @Option(help: "Flip the output: none, horizontal, vertical or both.") var flip: FlipChoice = .none
     @Option(help: "Rotate the output clockwise by 0, 90, 180 or 270 degrees.") var rotate: Int = 0
@@ -100,6 +105,10 @@ struct VectorizeCommand: ParsableCommand {
         options.border = border
         options.adjust = Adjustments(brightness: brightness, contrast: contrast, saturation: saturation, gamma: gamma, invert: invert)
         options.denoise = denoise
+        if let removeBg {
+            options.removeBackground = BackgroundRemoval(method: BackgroundRemoval.Method(rawValue: removeBg.rawValue)!,
+                                                         tolerance: bgTolerance, removeEnclosed: !keepEnclosed)
+        }
         options.flipHorizontal = flip == .horizontal || flip == .both
         options.flipVertical = flip == .vertical || flip == .both
         options.rotation = rotate
@@ -136,6 +145,7 @@ struct VectorizeCommand: ParsableCommand {
             print("tracing: \(r.output.tracing.rawValue), palette: \(state.quantized?.palette.count ?? 0) colors, processed at \(image.bitmap.width)×\(image.bitmap.height)")
             print("paths: \(result.stats.pathCount), segments: \(result.stats.segmentCount), bytes: \(result.stats.byteCount), visible difference: \(result.stats.visibleDifference.isNaN ? "n/a" : String(format: "%.1f%%", result.stats.visibleDifference * 100))")
         }
+        if let bg = result.stats.background { print(bg.summary) }
         print(outURL.path)
     }
 

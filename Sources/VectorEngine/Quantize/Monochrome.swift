@@ -38,7 +38,8 @@ extension Quantizer {
             return l * a + (1 - a)
         }
         let t = m.threshold ?? otsu(brightness)
-        var ink = brightness.map { m.invert ? $0 > t : $0 < t }
+        // Transparent pixels are paper either way — inverting must not ink a removed background.
+        var ink = zip(brightness, bitmap.pixels).map { v, p in m.invert ? v > t && p.a >= 128 : v < t }
         resolveDiagonals(&ink, width: bitmap.width, height: bitmap.height, policy: m.turnPolicy)
         return QuantizedImage(width: bitmap.width, height: bitmap.height, palette: [m.ink], indices: ink.map { $0 ? 0 : -1 })
     }

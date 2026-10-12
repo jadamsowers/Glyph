@@ -7,6 +7,8 @@ public struct VectorStats: Sendable, Equatable {
     /// Fraction of pixels that differ visibly (ΔE > 10) from the processed source when rendered;
     /// NaN when there is no pixel-for-pixel reference (halftone).
     public var visibleDifference: Double = 0
+    /// What background removal did (nil when it is off).
+    public var background: BackgroundOutcome? = nil
 }
 
 public struct VectorResult: Sendable, Equatable {
