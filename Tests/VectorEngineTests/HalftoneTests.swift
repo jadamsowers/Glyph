@@ -22,7 +22,9 @@ import Testing
         let d = dots(try run(ramp, Halftone(cellSize: 8, angle: 0)))
         let left = d.filter { $0.0.x < 30 }.map(\.1), right = d.filter { $0.0.x > 80 }.map(\.1)
         #expect(!right.isEmpty)
-        #expect((left.isEmpty ? 0 : left.reduce(0, +) / Double(left.count)) < right.reduce(0, +) / Double(right.count))
+        let leftMean: Double = left.isEmpty ? 0 : left.reduce(0, +) / Double(left.count)
+        let rightMean: Double = right.reduce(0, +) / Double(right.count)
+        #expect(leftMean < rightMean)
         #expect(!d.contains { $0.0.x < 4 })   // the white edge gets no dots
     }
 
