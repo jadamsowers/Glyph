@@ -121,3 +121,26 @@ extension AnalysisTests {
         #expect(Analyzer.analyze(photo, params: noCoverage).kind == .logo)
     }
 }
+
+extension AnalysisTests {
+    // Regression (user report): a badge logo full of small text and tree silhouettes has many hard
+    // edges at the analysis size, yet is almost entirely flat palette color. It was called a photo,
+    // whose 16-color quantization split each flat area into near-identical shades ("topo lines").
+    @Test func denseFlatLogoIsLogo() throws {
+        let navy = RGBA(1, 46, 104), white = RGBA(252, 251, 251), gray = RGBA(174, 173, 173)
+        // Anti-aliased diagonal bands, 7 px period: hard edges everywhere, but flat colors.
+        let b = Bitmap(width: 256, height: 256) { x, y in
+            var acc = (0.0, 0.0, 0.0)
+            for s in 0..<16 {
+                let u = Double(x) + (Double(s % 4) + 0.5) / 4, v = Double(y) + (Double(s / 4) + 0.5) / 4
+                let band = Int(((u + v) / 7).rounded(.down)) % 3
+                let c = band == 0 ? navy : band == 1 ? white : gray
+                acc.0 += Double(c.r); acc.1 += Double(c.g); acc.2 += Double(c.b)
+            }
+            return RGBA(UInt8(acc.0 / 16), UInt8(acc.1 / 16), UInt8(acc.2 / 16))
+        }
+        let a = analyze(b)
+        #expect(a.edgeFraction > 0.35)            // exercises the dense-edge case
+        #expect(a.kind == .logo, "edges \(a.edgeFraction), coverage \(a.paletteCoverage), gradient \(a.gradientFraction)")
+    }
+}

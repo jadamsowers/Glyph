@@ -50,9 +50,12 @@ enum Analyzer {
             if labs.contains(where: { $0.distance(to: lab) < 6 }) { covered += 1 }
         }
         let coverage = opaque == 0 ? 1 : Double(covered) / Double(opaque)
-        // Pixel art is flat by construction, however dense its edges.
+        // Pixel art is flat by construction, however dense its edges. Dense hard edges mark noise
+        // only when the image isn't nearly all flat palette color: a badge full of small text and
+        // trees is all edges at the analysis size, yet ≥ 93% palette color (noise is near 0).
+        let denseFlat = coverage >= max(p.logoMinCoverage, 0.93)
         let isLogo = pixelArt || (palette.count <= p.logoMaxColors && gradient < p.logoMaxGradientFraction
-            && edges < p.logoMaxEdgeFraction && coverage >= p.logoMinCoverage)
+            && (edges < p.logoMaxEdgeFraction || denseFlat) && coverage >= p.logoMinCoverage)
         return Analysis(
             kind: isLogo ? .logo : .photo, significantColors: palette.count, gradientFraction: gradient,
             palette: palette.map(\.color), shares: palette.map { total > 0 ? Double($0.count) / Double(total) : 0 },
