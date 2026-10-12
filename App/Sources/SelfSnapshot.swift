@@ -11,11 +11,33 @@ enum SelfSnapshot {
         guard let image = env["GLYPH_SNAPSHOT_IMAGE"], let out = env["GLYPH_SNAPSHOT_OUT"] else { return }
         model.open(URL(fileURLWithPath: image))
         while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
-        let steps: [(String, () -> Void)] = [
+        var steps: [(String, () -> Void)] = [
             ("fit", { model.zoomToFit() }),
             ("actual", { model.zoomToActualSize() }),
             ("zoom400", { model.setZoom(4); model.pan = CGSize(width: 300, height: 200) }),
         ]
+        // With GLYPH_SNAPSHOT_EDIT set: select the longest boundary, drag its middle anchor, then undo.
+        if env["GLYPH_SNAPSHOT_EDIT"] != nil {
+            steps += [
+                ("edit-select", {
+                    model.zoomToFit()
+                    model.beginEditing()
+                    guard let curves = model.editor?.curves else { return }
+                    model.selectedChain = curves.indices.max { curves[$0].segments.count < curves[$1].segments.count }
+                }),
+                ("edit-drag", {
+                    guard let c = model.selectedChain, let n = model.editor?.anchors(of: c).count else { return }
+                    model.beginDrag(.anchor(chain: c, index: n / 2), breakSmooth: false)
+                    model.dragCurves(by: Vec2(60, 40))
+                    model.endDrag()
+                }),
+                ("edit-undo", {
+                    let info = "undoManager \(true) canUndo \(model.undoManager.canUndo) hasEdits \(model.hasEdits)"
+                    model.undoManager.undo()
+                    try? (info + " after \(model.hasEdits)").write(toFile: out + "-edit.txt", atomically: true, encoding: .utf8)
+                }),
+            ]
+        }
         for (name, step) in steps {
             step()
             try? await Task.sleep(for: .milliseconds(400))

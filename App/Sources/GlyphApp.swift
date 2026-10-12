@@ -24,6 +24,17 @@ struct GlyphApp: App {
                     .keyboardShortcut("s")
                     .disabled(model.result == nil)
             }
+            // Undo goes to curve edits when there are any, else to the focused control (text fields).
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") {
+                    if model.undoManager.canUndo { model.undoManager.undo() } else { NSApp.sendAction(Selector(("undo:")), to: nil, from: nil) }
+                }
+                .keyboardShortcut("z")
+                Button("Redo") {
+                    if model.undoManager.canRedo { model.undoManager.redo() } else { NSApp.sendAction(Selector(("redo:")), to: nil, from: nil) }
+                }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+            }
             CommandGroup(replacing: .pasteboard) {
                 Button("Copy SVG") { model.copySVG() }
                     .keyboardShortcut("c")
@@ -56,6 +67,12 @@ struct GlyphApp: App {
                 Toggle("Remove Background", isOn: Binding(get: { model.options.removeBackground != nil },
                                                           set: { model.options.removeBackground = $0 ? BackgroundRemoval() : nil }))
                     .keyboardShortcut("b", modifiers: [.command, .shift])
+                Divider()
+                Toggle("Edit Curves", isOn: Binding(get: { model.isEditing }, set: { _ in model.toggleEditing() }))
+                    .keyboardShortcut("e")
+                    .disabled(!model.isEditing && !model.canEditCurves)
+                Button("Revert Curve Edits") { model.revertEdits() }
+                    .disabled(!model.hasEdits)
                 Divider()
                 Button("Reset to Auto") { model.resetToAuto() }
                     .keyboardShortcut("r", modifiers: [.command, .shift])

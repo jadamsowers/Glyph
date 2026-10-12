@@ -18,6 +18,7 @@ struct ContentView: View {
             Divider()
             InspectorView()
                 .frame(width: 280)
+                .disabled(model.isEditing)
         }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
@@ -25,6 +26,15 @@ struct ContentView: View {
             return true
         } isTargeted: { isDropTargeted = $0 }
         .task { await SelfSnapshot.runIfRequested(model) }
+        .alert("Discard curve edits?", isPresented: Binding(
+            get: { model.pendingOptions != nil },
+            set: { if !$0 { model.pendingOptions = nil } })
+        ) {
+            Button("Discard Edits", role: .destructive) { model.discardEditsAndApplyPendingOptions() }
+            Button("Cancel", role: .cancel) { model.pendingOptions = nil }
+        } message: {
+            Text("This setting re-traces the image, which replaces the curves you edited.")
+        }
         .alert("Couldn't vectorize", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } })
