@@ -174,4 +174,36 @@ import Testing
         #expect(editor.target(near: CGPoint(x: 71, y: 2), in: 0, tolerance: 6, transform: t) == .handle(chain: 0, segment: 0, second: true))
         #expect(editor.target(near: CGPoint(x: 99, y: 1), in: 0, tolerance: 6, transform: t) == .anchor(chain: 0, index: 1))
     }
+
+    @Test func junctionDragsLeaveNoGaps() throws {
+        let s = try Pipeline.run(input: InputImage(bitmap: image), options: Options())
+        var editor = CurveEditor(curves: s.curves!)
+        // Drag both ends of a chain that runs between junctions (3+ chains meet at each).
+        let c = try #require(editor.curves.indices.first { i in
+            [0, editor.curves[i].segments.count].allSatisfy { editor.occurrences(of: .init(chain: i, index: $0)).count >= 3 }
+        })
+        editor.update(editor.beginDrag(.anchor(chain: c, index: 0)), by: Vec2(2.5, -1.5))
+        editor.update(editor.beginDrag(.anchor(chain: c, index: editor.curves[c].segments.count)), by: Vec2(-2.5, 1.5))
+        let shapes = try #require(s.previewShapes(editor.curves))
+        let raster = ShapeRenderer.rasterize(shapes, width: 48, height: 32, antialias: false, background: T.magenta)
+        #expect(!raster.pixels.contains(T.magenta))
+    }
+
+    @Test func outputOnlyChangesKeepEditsAndRetracingDoesNot() throws {
+        let input = InputImage(bitmap: image)
+        let s = try Pipeline.run(input: input, options: Options())
+        var editor = CurveEditor(curves: s.curves!)
+        editor.update(editor.beginDrag(.anchor(chain: 0, index: 1)), by: Vec2(1, 1))
+        let edited = try Pipeline.run(input: input, options: Options(), reusing: s.replacingCurves(editor.curves))
+        var rotated = Options(); rotated.rotation = 90
+        #expect(Pipeline.stageToRecompute(after: edited, input: input, options: rotated) == .svg)
+        #expect(try Pipeline.run(input: input, options: rotated, reusing: edited).curves == editor.curves)
+        let detailed = Options(detail: 0.9)
+        #expect(try #require(Pipeline.stageToRecompute(after: edited, input: input, options: detailed)) <= .curves)
+    }
+
+    @Test func previewRefusesCurvesFromAnotherTrace() throws {
+        let s = try Pipeline.run(input: InputImage(bitmap: image), options: Options())
+        #expect(s.previewShapes(Array(s.curves!.dropLast())) == nil)
+    }
 }

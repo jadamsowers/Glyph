@@ -161,6 +161,9 @@ final class AppModel {
     private func finish(_ finished: PipelineState?, vector prepared: ShapeRenderer.Prepared?, generation gen: Int, error: Error?) {
         guard gen == generation else { return }
         isRunning = false
+        // A run that re-traced (e.g. one debounced from just before editing began) has new chains:
+        // edits indexed by the old ones no longer apply.
+        if let finished, let curves = currentCurves, finished.curves != curves { clearEdits() }
         if let finished { state = finished; vector = prepared }
         if let error { errorMessage = error.localizedDescription }
     }

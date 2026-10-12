@@ -38,7 +38,7 @@ extension PipelineState {
     /// The output shapes `curves` would give, without the SVG stage's fidelity measurement or SVG
     /// text — cheap enough to redraw on every drag event. Nil unless `isCurveEditable`.
     public func previewShapes(_ curves: [Curve]) -> [VectorShape]? {
-        guard isCurveEditable, let r = resolved else { return nil }
+        guard isCurveEditable, let r = resolved, curves.count == topology?.chains.count else { return nil }
         let (shapes, w, h) = Pipeline.outputShapes(self, curves: curves)
         return Pipeline.orient(shapes, width: w, height: h, r.output).0
     }

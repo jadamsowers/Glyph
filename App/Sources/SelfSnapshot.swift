@@ -31,11 +31,7 @@ enum SelfSnapshot {
                     model.dragCurves(by: Vec2(60, 40))
                     model.endDrag()
                 }),
-                ("edit-undo", {
-                    let info = "undoManager \(true) canUndo \(model.undoManager.canUndo) hasEdits \(model.hasEdits)"
-                    model.undoManager.undo()
-                    try? (info + " after \(model.hasEdits)").write(toFile: out + "-edit.txt", atomically: true, encoding: .utf8)
-                }),
+                ("edit-undo", { model.undoManager.undo() }),
             ]
         }
         for (name, step) in steps {
