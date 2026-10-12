@@ -180,6 +180,29 @@ public enum Pipeline {
         }
     }
 
+    /// The traced shapes in output units, before orientation, with the background rectangle if any,
+    /// and the output frame (original size plus border).
+    static func outputShapes(_ s: PipelineState, curves: [Curve]) -> (shapes: [VectorShape], width: Int, height: Int) {
+        let r = s.resolved!, input = s.input
+        var shapes: [VectorShape]
+        if r.output.centerline, let mono = r.quantize.monochrome {
+            shapes = Centerline.trace(s.quantized!, ink: mono.ink, params: .init(tolerance: r.curve.tolerance))
+        } else if let h = r.output.halftone {
+            // Cell size is given in original px; the screen is built on the processed bitmap.
+            shapes = HalftoneGenerator.shapes(s.prefiltered!, cell: max(1, h.cellSize / input.scaleX), h)
+        } else {
+            shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: curves, tracing: r.output.tracing)
+        }
+        shapes = shapes.map { $0.scaled(input.scaleX, input.scaleY) }
+        let outW = input.originalWidth + 2 * r.output.border, outH = input.originalHeight + 2 * r.output.border
+        if let bg = r.output.background {
+            let w = Double(outW), h = Double(outH)
+            shapes.insert(VectorShape(color: bg, subpaths: [Subpath(start: .zero, segments: [
+                .line(to: Vec2(w, 0)), .line(to: Vec2(w, h)), .line(to: Vec2(0, h)), .line(to: .zero)])]), at: 0)
+        }
+        return (shapes, outW, outH)
+    }
+
     static func compute(_ stage: Stage, _ s: inout PipelineState) {
         switch stage {
         case .analyze:
@@ -217,22 +240,7 @@ public enum Pipeline {
                                          bounds: (s.input.bitmap.width, s.input.bitmap.height))
         case .svg:
             let r = s.resolved!, input = s.input
-            var shapes: [VectorShape]
-            if r.output.centerline, let mono = r.quantize.monochrome {
-                shapes = Centerline.trace(s.quantized!, ink: mono.ink, params: .init(tolerance: r.curve.tolerance))
-            } else if let h = r.output.halftone {
-                // Cell size is given in original px; the screen is built on the processed bitmap.
-                shapes = HalftoneGenerator.shapes(s.prefiltered!, cell: max(1, h.cellSize / input.scaleX), h)
-            } else {
-                shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: s.curves!, tracing: r.output.tracing)
-            }
-            shapes = shapes.map { $0.scaled(input.scaleX, input.scaleY) }
-            let outW = input.originalWidth + 2 * r.output.border, outH = input.originalHeight + 2 * r.output.border
-            if let bg = r.output.background {
-                let w = Double(outW), h = Double(outH)
-                shapes.insert(VectorShape(color: bg, subpaths: [Subpath(start: .zero, segments: [
-                    .line(to: Vec2(w, 0)), .line(to: Vec2(w, h)), .line(to: Vec2(0, h)), .line(to: .zero)])]), at: 0)
-            }
+            let (shapes, outW, outH) = outputShapes(s, curves: s.curves!)
             // Stacked output gets an underlay stroke to hide sibling seams: at least one processing
             // pixel, and at least one display pixel when shown smaller (output units throughout).
             let longSide = Double(max(input.originalWidth, input.originalHeight))
