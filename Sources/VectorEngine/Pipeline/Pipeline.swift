@@ -151,6 +151,7 @@ public enum Pipeline {
         var r = options.resolved(with: analysis).adjusted(forUpscale: input.upscale)
             .adjusted(forDisplay: options.displaySize, longSide: max(input.originalWidth, input.originalHeight))
         r.prefilter.border = r.output.border * input.upscale
+        r.quantize.upscale = input.upscale
         r.prefilter.background?.minEnclosedArea = max(1, r.segment.speckSize)
         r.prefilter.background?.fringeRadius = max(2, input.upscale)
         let longOriginal = Double(max(input.originalWidth, input.originalHeight))

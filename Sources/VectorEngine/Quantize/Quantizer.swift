@@ -11,6 +11,8 @@ public struct QuantizeParams: Sendable, Equatable {
     public var kmeansSampleSize: Int = 20_000
     /// Black-and-white mode (overrides `kind`).
     public var monochrome: Monochrome? = nil
+    /// Factor the bitmap was upscaled by (1 = source pixels); see `assignUpscaled`.
+    public var upscale = 1
 
     public init(kind: ImageKind, colorCount: Int) {
         self.kind = kind
@@ -37,7 +39,77 @@ enum Quantizer {
         let chosen = PaletteBuilder.palette(
             from: clusters, total: total, maxColors: p.colorCount, minShare: p.minColorShare,
             blendSlack: p.blendSlack, blendKeepShare: p.blendKeepShare)
-        return refineBlends(assign(bitmap, palette: chosen.map(\.color), alphaThreshold: p.alphaThreshold), bitmap)
+        let palette = chosen.map(\.color)
+        if p.upscale > 1, bitmap.width >= p.upscale, bitmap.height >= p.upscale {
+            return assignUpscaled(bitmap, palette: palette, factor: p.upscale, alphaThreshold: p.alphaThreshold)
+        }
+        return refineBlends(assign(bitmap, palette: palette, alphaThreshold: p.alphaThreshold), bitmap)
+    }
+
+    /// Color assignment for an upscaled bitmap. Upscaling stretches each anti-aliased edge pixel
+    /// into a ramp several pixels wide whose middle can sit nearest some third palette color (a
+    /// navy–white ramp passing a logo's gray), and ramps that wide defeat `refineBlends`. So
+    /// colors are decided at source resolution first (box-averaging each `factor`² block back
+    /// to one pixel), where anti-aliasing is one pixel wide and `refineBlends` handles it. Each
+    /// upscaled pixel then takes the nearest palette color among those its source pixel's 3×3
+    /// neighborhood was given: a ramp between navy and white splits between navy and white — at
+    /// a sub-pixel position, which is the point of upscaling — while a real gray outline keeps gray.
+    static func assignUpscaled(_ bitmap: Bitmap, palette: [RGBA], factor f: Int, alphaThreshold: UInt8) -> QuantizedImage {
+        let sw = bitmap.width / f, sh = bitmap.height / f
+        let source = Bitmap(width: sw, height: sh) { x, y in
+            var r = 0, g = 0, b = 0, a = 0
+            for dy in 0..<f {
+                for dx in 0..<f {
+                    let c = bitmap[x * f + dx, y * f + dy]
+                    r += Int(c.r); g += Int(c.g); b += Int(c.b); a += Int(c.a)
+                }
+            }
+            let n = f * f
+            return RGBA(UInt8(r / n), UInt8(g / n), UInt8(b / n), UInt8(a / n))
+        }
+        let coarse = refineBlends(assign(source, palette: palette, alphaThreshold: alphaThreshold), source)
+        // Allowed colors per source pixel: its own and its 3×3 neighbors' (bit k = palette[k]).
+        guard palette.count <= 64 else { return assign(bitmap, palette: palette, alphaThreshold: alphaThreshold) }
+        var allowed = [UInt64](repeating: 0, count: sw * sh)
+        for y in 0..<sh {
+            for x in 0..<sw {
+                var bits: UInt64 = 0
+                for ny in max(0, y - 1)...min(sh - 1, y + 1) {
+                    for nx in max(0, x - 1)...min(sw - 1, x + 1) {
+                        let k = coarse.indices[ny * sw + nx]
+                        if k >= 0 { bits |= 1 << UInt64(k) }
+                    }
+                }
+                allowed[y * sw + x] = bits
+            }
+        }
+        let labs = palette.map { Lab($0) }
+        struct Key: Hashable { var rgb: UInt32; var allowed: UInt64 }
+        var cache: [Key: Int32] = [:]
+        var indices = [Int32](repeating: -1, count: bitmap.pixels.count)
+        for y in 0..<bitmap.height {
+            let sy = min(sh - 1, y / f)
+            for x in 0..<bitmap.width {
+                let c = bitmap[x, y]
+                guard c.a >= alphaThreshold else { continue }
+                let bits = allowed[sy * sw + min(sw - 1, x / f)]
+                guard bits != 0 else { continue }
+                let key = Key(rgb: c.rgbKey, allowed: bits)
+                if let hit = cache[key] { indices[y * bitmap.width + x] = hit; continue }
+                let lab = Lab(c)
+                var best: Int32 = -1, bestD = Double.infinity
+                var rest = bits
+                while rest != 0 {
+                    let k = rest.trailingZeroBitCount
+                    rest &= rest - 1
+                    let d = labs[k].distance(to: lab)
+                    if d < bestD { bestD = d; best = Int32(k) }
+                }
+                cache[key] = best
+                indices[y * bitmap.width + x] = best
+            }
+        }
+        return QuantizedImage(width: bitmap.width, height: bitmap.height, palette: palette, indices: indices)
     }
 
     /// Second pass for anti-aliased edges: a pixel whose raw color is a mix (see

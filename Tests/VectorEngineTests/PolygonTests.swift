@@ -116,3 +116,19 @@ extension PolygonTests {
         #expect(corners >= 8, "\(corners) corners")   // 4 of the rectangle + 4 of the bump
     }
 }
+
+extension PolygonTests {
+    // Regression (user report): square "teeth" on letter curves. The left side of a "G" traced as
+    // this staircase: runs of 4 down, a 1 px step left, 4 down, a step back right, 4 down — the
+    // pattern of a 4×1 bump on a straight edge — but the outline keeps stepping left before it
+    // and right after it: a curve's extreme, not a bump. Its corners must not be protected.
+    @Test func curveExtremeIsNotABump() {
+        let path: [(Int, Int)] = [(188, 332), (187, 332), (187, 333), (186, 333), (186, 334), (186, 335), (185, 335), (185, 336),
+            (185, 337), (184, 337), (184, 338), (184, 339), (183, 339), (183, 340), (183, 341), (183, 342), (183, 343),
+            (182, 343), (182, 344), (182, 345), (182, 346), (182, 347), (183, 347), (183, 348), (183, 349), (183, 350),
+            (183, 351), (184, 351), (184, 352), (184, 353), (185, 353), (185, 354), (185, 355), (186, 355), (186, 356)]
+        let chain = Chain(points: path.map { LatticePoint($0.0, $0.1) }, left: 0, right: 1, isClosed: false)
+        let (_, protected) = PolygonBuilder.samplePoints(chain, cornerRunLength: 2, minFeatureArea: 4)
+        #expect(protected.isEmpty)
+    }
+}

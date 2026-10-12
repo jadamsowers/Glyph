@@ -128,3 +128,50 @@ import Testing
         #expect(q.palette.isEmpty && q.indices.allSatisfy { $0 == -1 })
     }
 }
+
+@Suite struct UpscaledQuantizeTests {
+    static let navy = RGBA(1, 46, 104), white = RGBA(252, 251, 251), gray = RGBA(174, 173, 173)
+
+    /// An anti-aliased navy disk on white, a solid gray block so gray is a real palette color (as
+    /// in a badge with a gray ring), and optionally a 4 px gray ring hugging the disk.
+    func badge(grayRing: Bool) -> Bitmap {
+        Bitmap(width: 64, height: 64) { x, y in
+            if x >= 54 { return Self.gray }
+            var n = 0, g = 0
+            for s in 0..<16 {
+                let u = Double(x) + (Double(s % 4) + 0.5) / 4 - 26, v = Double(y) + (Double(s / 4) + 0.5) / 4 - 32
+                let d = (u * u + v * v).squareRoot()
+                if d <= 14 { n += 1 } else if grayRing && d <= 18 { g += 1 }
+            }
+            let w = 16 - n - g
+            func mix(_ k: KeyPath<RGBA, UInt8>) -> UInt8 {
+                UInt8((Double(n) * Double(Self.navy[keyPath: k]) + Double(g) * Double(Self.gray[keyPath: k]) + Double(w) * Double(Self.white[keyPath: k])) / 16)
+            }
+            return RGBA(mix(\.r), mix(\.g), mix(\.b))
+        }
+    }
+
+    func grayPixels(_ b: Bitmap, factor: Int) -> Int {
+        var p = QuantizeParams(kind: .logo, colorCount: 3)
+        p.upscale = factor
+        let q = Quantizer.quantize(b.upscaled(by: factor), params: p)
+        let target = Lab(Self.gray)
+        let gray = Int32(q.palette.indices.min { Lab(q.palette[$0]).distance(to: target) < Lab(q.palette[$1]).distance(to: target) }!)
+        var n = 0
+        for y in 0..<q.height { for x in 0..<(50 * factor) where q.indices[y * q.width + x] == gray { n += 1 } }
+        return n
+    }
+
+    // Regression (user report, High detail): upscaling widens navy–white anti-aliasing into ramps
+    // several pixels wide whose middle is nearest the logo's real gray, outlining shapes in gray.
+    @Test func upscaledRampsDoNotTurnGray() {
+        let n = grayPixels(badge(grayRing: false), factor: 4)
+        #expect(n == 0, "\(n) gray pixels")
+    }
+
+    @Test func realGrayOutlineSurvivesUpscaling() {
+        // Ring between radius 14 and 18 px, ×4: π(72² − 56²) ≈ 6 434 px.
+        let n = grayPixels(badge(grayRing: true), factor: 4)
+        #expect(n > 5_800 && n < 7_100, "\(n) gray pixels")
+    }
+}

@@ -128,7 +128,15 @@ enum PolygonBuilder {
                 let returns = out.dx == -back.dx && out.dy == -back.dy && out.length == back.length
                 let onLine = before.dx == r.dx && before.dy == r.dy && after.dx == r.dx && after.dy == r.dy
                 let based = before.length >= r.length && after.length >= r.length
-                if returns && onLine && based && r.length * out.length >= max(1, minArea) {
+                // A curve's extreme looks the same up close, but its outline keeps stepping the
+                // same way before the base runs and after them (short steps matching the step out
+                // and the step back). A real bump's base line ends at a corner or runs on straight.
+                var hump = false
+                if let rise = runAt(k - 3), let fall = runAt(k + 3), chain.isClosed || (k >= 3 && k + 3 < rs.count) {
+                    hump = rise.dx == out.dx && rise.dy == out.dy && rise.length <= 2 * out.length
+                        && fall.dx == back.dx && fall.dy == back.dy && fall.length <= 2 * back.length
+                }
+                if returns && onLine && based && !hump && r.length * out.length >= max(1, minArea) {
                     isFeature[k] = true
                     stepOut[wrap(k - 1)] = true
                     stepIn[wrap(k + 1)] = true
