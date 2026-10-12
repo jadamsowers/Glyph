@@ -187,3 +187,31 @@ extension SmallIconTests {
         }
     }
 }
+
+@Suite struct BezierHandleTests {
+    /// Short point runs with arbitrary end tangents (as tiny boundary pieces produce) must never
+    /// get handles that fly far outside the points: such a cubic still passes through the samples
+    /// but draws a long hairline loop across the image.
+    @Test func handlesStayNearThePoints() {
+        var rng = SplitMix64(seed: 11)
+        func r(_ range: ClosedRange<Double>) -> Double { Double.random(in: range, using: &rng) }
+        var worst = 0.0
+        for _ in 0..<5000 {
+            let n = Int.random(in: 3...6, using: &rng)
+            let pts = (0..<n).map { _ in Vec2(r(0...4), r(0...4)) }
+            let a = r(0...(2 * .pi)), b = r(0...(2 * .pi))
+            let t1 = Vec2(cos(a), sin(a)), t2 = Vec2(cos(b), sin(b))
+            let xs = pts.map(\.x), ys = pts.map(\.y)
+            let size = max(1, hypot(xs.max()! - xs.min()!, ys.max()! - ys.min()!))
+            var segs = BezierFit.fit(pts, leftTangent: t1, rightTangent: t2, tolerance: 0.5)
+            segs.append(BezierFit.single(pts, leftTangent: t1, rightTangent: t2))
+            for case .cubic(let c1, let c2, _) in segs {
+                for c in [c1, c2] {
+                    let d = pts.map { hypot($0.x - c.x, $0.y - c.y) }.min()!
+                    worst = max(worst, d / size)
+                }
+            }
+        }
+        #expect(worst < 3, "a control point reached \(worst)× the point spread away")
+    }
+}

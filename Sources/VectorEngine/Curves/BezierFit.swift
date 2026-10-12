@@ -75,9 +75,15 @@ enum BezierFit {
         var alphaR = det == 0 ? 0 : (c00 * x1 - c01 * x0) / det
         let segLength = p0.distance(to: p3)
         let epsilon = 1e-6 * segLength
-        if alphaL < epsilon || alphaR < epsilon {
-            alphaL = segLength / 3
-            alphaR = segLength / 3
+        // A near-singular system (few, nearly collinear points) can give enormous handles that
+        // still pass through every sample yet loop far outside them. Reject handles that overshoot
+        // each other along the chord, or reach well beyond the points themselves.
+        let spread = (first...last).reduce(0.0) { max($0, d[$1].distance(to: p0), d[$1].distance(to: p3)) }
+        let chord = p3 - p0
+        let overshoot = (t1 * alphaL).dot(chord) - (t2 * alphaR).dot(chord) > segLength * segLength
+        if alphaL < epsilon || alphaR < epsilon || overshoot || max(alphaL, alphaR) > 2.5 * spread {
+            alphaL = (segLength > 0 ? segLength : spread) / 3
+            alphaR = alphaL
         }
         return [p0, p0 + t1 * alphaL, p3 + t2 * alphaR, p3]
     }
