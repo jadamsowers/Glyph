@@ -21,7 +21,7 @@ public struct Segmentation: Sendable, Equatable {
 public struct SegmentParams: Sendable, Equatable {
     /// Regions with fewer pixels than this are merged into their most similar neighbor.
     public var speckSize: Int
-    /// When set, a speck whose color is close to its most similar neighbour (ΔE below this) may be
+    /// When set, a speck whose color is close to its most similar neighbor (ΔE below this) may be
     /// up to 4× larger and still merge — faint specks are invisible at sizes where vivid ones aren't.
     public var contrastReference: Double? = nil
 

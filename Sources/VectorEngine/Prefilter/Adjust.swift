@@ -45,7 +45,7 @@ extension Prefilter {
     }
 
     /// Per-channel median over a (2r+1)² window: removes isolated noise (JPEG, scans) while keeping
-    /// edges. Transparent pixels are left alone and ignored as neighbours.
+    /// edges. Transparent pixels are left alone and ignored as neighbors.
     static func median(_ src: Bitmap, radius: Int, alphaThreshold: UInt8 = 128) -> Bitmap {
         guard radius > 0 else { return src }
         let w = src.width, h = src.height

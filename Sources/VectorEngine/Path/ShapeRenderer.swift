@@ -18,7 +18,7 @@ public enum ShapeRenderer {
 
     /// Fills shapes in order with the even-odd rule. `ctx` must use y-down coordinates. A positive
     /// `seamStroke` first strokes every outline in its own color beneath all fills, so anti-aliased
-    /// edges between neighbours show shape colors instead of the background.
+    /// edges between neighbors show shape colors instead of the background.
     public static func fill(_ shapes: [VectorShape], seamStroke: Double = 0, in ctx: CGContext) {
         if seamStroke > 0 {
             ctx.setLineWidth(seamStroke)

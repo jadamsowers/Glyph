@@ -60,10 +60,10 @@ enum Analyzer {
     }
 
     /// Whether the image's edges are hard and unblended. Judged only at "stair" pixels — edge
-    /// pixels that differ from both a horizontal and a vertical neighbour — because axis-aligned
+    /// pixels that differ from both a horizontal and a vertical neighbor — because axis-aligned
     /// edges look the same with or without anti-aliasing; diagonals and curves are where blending
     /// shows. Anti-aliasing leaves one-off blend shades there; pixel art only uses colors that also
-    /// appear in flat runs (a pixel equal to both its horizontal or both its vertical neighbours).
+    /// appear in flat runs (a pixel equal to both its horizontal or both its vertical neighbors).
     /// True if at least 95% of stair pixels have such a "run" color (and there are enough to judge).
     public static func looksLikePixelArt(_ bitmap: Bitmap, alphaThreshold: UInt8 = 128) -> Bool {
         let b = downsample(bitmap, to: 512)
@@ -132,7 +132,7 @@ enum Analyzer {
                 solid[y * w + x] = ok
             }
         }
-        // Raw contrast within each pixel's 3×3 neighbourhood. Shading spreads its change over
+        // Raw contrast within each pixel's 3×3 neighborhood. Shading spreads its change over
         // several pixels, so the immediate range is smaller than the change over 3 px; a low-
         // contrast step edge (UI panels) or a text halo concentrates it in one step. Texture
         // (grain, foliage) is moderate raw range without hard edges.

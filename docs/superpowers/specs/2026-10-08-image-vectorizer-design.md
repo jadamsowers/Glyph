@@ -86,7 +86,7 @@ public enum Vectorizer { static func vectorize(_: InputImage, options:) throws -
 ```
 
 - Reuse: passing the previous `PipelineState` reuses every stage before the first one whose resolved parameters changed (same input only), e.g. a smoothness change restarts at `.polygon`, a tracing change only redoes `.svg`.
-- Cancellation: throwing from `onStage`, or cancelling the task consuming `stream`, stops the run between stages.
+- Cancellation: throwing from `onStage`, or canceling the task consuming `stream`, stops the run between stages.
 - Stage pictures are rendered on demand from the stored values (`StageRenderer`), keeping all stage outputs `Sendable`.
 
 ## 5. macOS App (SwiftUI)
@@ -100,7 +100,7 @@ public enum Vectorizer { static func vectorize(_: InputImage, options:) throws -
   - Sliders: Colors, Detail, Smoothness, Speck size.
   - ▸ Advanced disclosure group: all `AdvancedOptions`, plus "Reset to auto".
   - Stats: paths, nodes, SVG size.
-- Debounced (~250 ms) live re-run on changes, from earliest affected stage; prior run cancelled.
+- Debounced (~250 ms) live re-run on changes, from earliest affected stage; prior run canceled.
 - Export: ⌘S Save SVG…, ⌘C copy SVG markup. Preview renders the engine path model via Core Graphics (no WebView).
 - Sandbox entitlements: user-selected read/write only.
 

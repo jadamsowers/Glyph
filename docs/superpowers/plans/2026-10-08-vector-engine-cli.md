@@ -2878,7 +2878,7 @@ git commit -m "feat: vectorize CLI and sample image generator"
 
 **Background for the implementer:**
 - *Dense points.* A pixel boundary is a staircase. The midpoint of every straight run lies on the ideal edge: for a slope-1/3 edge, the midpoints of runs 3,1,3,1… are exactly collinear. A turn between two runs that are both at least `cornerRunLength` long is a real corner, such as a rectangle's, so that lattice vertex is kept too.
-- *Simplification.* Douglas–Peucker on the dense points. Open chains pin both endpoints, which are the junctions, so neighbouring regions stay welded. Closed loops split at point 0 and the point farthest from it. Afterwards, a cleanup pass drops vertices the split forced in that turn out to be redundant. Then *sharpening* rebuilds corners that anti-aliasing shaved into a short bevel: two vertices under 8 px apart, between edges at least 2.5× longer, are replaced by the intersection of those edges.
+- *Simplification.* Douglas–Peucker on the dense points. Open chains pin both endpoints, which are the junctions, so neighboring regions stay welded. Closed loops split at point 0 and the point farthest from it. Afterwards, a cleanup pass drops vertices the split forced in that turn out to be redundant. Then *sharpening* rebuilds corners that anti-aliasing shaved into a short bevel: two vertices under 8 px apart, between edges at least 2.5× longer, are replaced by the intersection of those edges.
 - *Corners.* A polygon vertex is a corner if its turn is ≥ 150°, or if its turn is ≥ `cornerAngle` and at least one adjacent edge is straight (its dense points bulge less than `straightTolerance` or 5% of the edge length). That distinguishes a square or triangle, whose edges are straight apart from anti-aliasing wobble, from the polygon of a small circle, whose edges bulge.
 
 **Interfaces:**
@@ -3553,7 +3553,7 @@ git commit -m "feat: Schneider Bézier fitting between corners"
 - Produces:
   - `StageRenderer.image(for stage: Stage, in state: PipelineState, scale: Double = 1) -> CGImage?`. The image is processing size × scale, and the result is nil if that stage hasn't run.
   - `StageRenderer.falseColor(_ seg: Segmentation) -> Bitmap`
-  - `Pipeline.stream(input:options:reusing:) -> AsyncThrowingStream<StageEvent, Error>`. Cancelling the consuming task cancels the work. Plan 2's app uses this API.
+  - `Pipeline.stream(input:options:reusing:) -> AsyncThrowingStream<StageEvent, Error>`. Canceling the consuming task cancels the work. Plan 2's app uses this API.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -3796,7 +3796,7 @@ public enum StageRenderer {
 In `Sources/VectorEngine/Pipeline/Pipeline.swift`, add this method inside `public enum Pipeline`, directly after `run(...)`:
 ```swift
     /// Runs the pipeline off the caller's task, yielding each stage as it completes.
-    /// Cancelling the consuming task (or dropping the stream) cancels the run between stages.
+    /// Canceling the consuming task (or dropping the stream) cancels the run between stages.
     public static func stream(input: InputImage, options: Options, reusing previous: PipelineState? = nil)
         -> AsyncThrowingStream<StageEvent, Error>
     {
@@ -3865,7 +3865,7 @@ swift build -c release
 ls out/logo-stages
 open out/logo-stages
 ```
-Expected: `ls` lists `00-analyze.png 01-prefilter.png 02-quantize.png 03-segment.png 04-contours.png 05-polygon.png 06-curves.png 07-svg.png`. Opening them shows: the original with a palette strip, then posterized colours, false-colour regions, staircase outlines, polygons with red corner and blue smooth dots, curves with grey handles, and the final render.
+Expected: `ls` lists `00-analyze.png 01-prefilter.png 02-quantize.png 03-segment.png 04-contours.png 05-polygon.png 06-curves.png 07-svg.png`. Opening them shows: the original with a palette strip, then posterized colors, false-color regions, staircase outlines, polygons with red corner and blue smooth dots, curves with gray handles, and the final render.
 
 - [ ] **Step 8: Run the whole suite and commit**
 

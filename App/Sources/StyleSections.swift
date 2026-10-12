@@ -93,15 +93,15 @@ struct BackgroundSection: View {
                 let r = $removal.or(BackgroundRemoval())
                 Picker("Method", selection: r.method) {
                     Text("Auto").tag(BackgroundRemoval.Method.auto)
-                    Text("Solid colour").tag(BackgroundRemoval.Method.solid)
+                    Text("Solid color").tag(BackgroundRemoval.Method.solid)
                     Text("Subject").tag(BackgroundRemoval.Method.subject)
                 }
-                .help("Solid colour clears the colour around the edge; Subject uses Apple's subject detection (best for photos). Auto picks by image type.")
+                .help("Solid color clears the color around the edge; Subject uses Apple's subject detection (best for photos). Auto picks by image type.")
                 if r.wrappedValue.method != .subject {
                     LabeledSlider(title: "Tolerance", value: r.tolerance, range: 0...40, step: 1, format: "%.0f")
-                        .help("How different (ΔE) a pixel may be from the background colour and still be removed")
+                        .help("How different (ΔE) a pixel may be from the background color and still be removed")
                     Toggle("Remove enclosed areas", isOn: r.removeEnclosed)
-                        .help("Also clear background-coloured areas that don't touch the edge, like the inside of an O")
+                        .help("Also clear background-colored areas that don't touch the edge, like the inside of an O")
                 }
                 if let outcome {
                     Text(outcome.summary).font(.caption).foregroundStyle(.secondary)

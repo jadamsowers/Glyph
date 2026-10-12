@@ -41,7 +41,7 @@ enum Quantizer {
     }
 
     /// Second pass for anti-aliased edges: a pixel whose raw color is a mix (see
-    /// `PaletteBuilder.isBlend`) of two *other* palette colors present in its 3×3 neighbourhood
+    /// `PaletteBuilder.isBlend`) of two *other* palette colors present in its 3×3 neighborhood
     /// joins the nearer of those two — not some third color that is merely numerically nearest,
     /// which would leave a thin band of the wrong region along the edge. Pixels that match their
     /// palette color closely (≤ 4 per channel) are never changed. Repeats until stable (at most

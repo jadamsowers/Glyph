@@ -17,7 +17,7 @@ enum CurveFitter {
     }
 
     /// Where several chains meet at a junction, a region's outline usually continues smoothly
-    /// through it from one chain into another (e.g. a fill whose neighbour changes color mid-curve,
+    /// through it from one chain into another (e.g. a fill whose neighbor changes color mid-curve,
     /// as along an anti-aliased outline stroke). At each junction, pair two chain ends that bound
     /// the same region and continue nearly straight (turn ≤ 60°) — preferring the largest such
     /// region, then the straightest — and give the pair one shared tangent, so that region's
@@ -105,7 +105,7 @@ enum CurveFitter {
                 if pts.count > 1 && vertexSet.contains(k) { interiorVertex = true }
                 k = (k + 1) % n
             }
-            // An open chain's ends may carry a tangent shared with a neighbouring chain at a junction.
+            // An open chain's ends may carry a tangent shared with a neighboring chain at a junction.
             let startFixed = !poly.isClosed && a == 0 ? startTangent : nil
             let endFixed = !poly.isClosed && b == n - 1 ? endTangent : nil
             let start = startFixed ?? (smooth.contains(a) ? central(a) : forward(pts))
@@ -220,7 +220,7 @@ enum CurveFitter {
     static let minLineLength = 24.0
 
     /// Stretches of points that lie on a line. Candidates are maximal runs within `tolerance` of
-    /// their chord, trimmed of ends that leak into neighbouring arcs; a run is kept if every point
+    /// their chord, trimmed of ends that leak into neighboring arcs; a run is kept if every point
     /// is within tolerance / 3 of its best-fit line and it is long enough (see above). Longest
     /// runs are taken first so a run can't cut across a side. Ascending, sharing at most endpoints.
     static func straightRuns(_ pts: [Vec2], tolerance: Double, unit: Double = 1) -> [ClosedRange<Int>] {
@@ -248,7 +248,7 @@ enum CurveFitter {
     }
 
     /// Shrinks a candidate run from whichever end sits off its best-fit line (by more than
-    /// tolerance / 6) — a run found by chord distance leaks into neighbouring arcs, and the leak
+    /// tolerance / 6) — a run found by chord distance leaks into neighboring arcs, and the leak
     /// shows at its ends — so lines stop at the true tangent points. Interior jitter (JPEG) up to
     /// the tolerance is allowed. Nil if what remains isn't a line (see `minLineLength`, `curves`).
     static func trim(_ run: ClosedRange<Int>, _ pts: [Vec2], tolerance: Double, unit: Double = 1) -> ClosedRange<Int>? {

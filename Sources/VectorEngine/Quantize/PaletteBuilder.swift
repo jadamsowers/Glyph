@@ -3,7 +3,7 @@ struct ColorCluster: Sendable, Equatable {
     var color: RGBA
     var lab: Lab
     var count: Int
-    /// Pixels whose four neighbours share their (5-bit) color: interior of a flat area. Anti-alias
+    /// Pixels whose four neighbors share their (5-bit) color: interior of a flat area. Anti-alias
     /// blends live in thin bands and have almost none.
     var flatCount: Int = 0
 }

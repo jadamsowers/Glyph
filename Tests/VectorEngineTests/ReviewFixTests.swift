@@ -18,7 +18,7 @@ import UniformTypeIdentifiers
         #expect(raster[20, 8] == TestImages.red)
     }
 
-    // Review #2: neighbouring (non-nested) shapes in stacked mode must not let the background
+    // Review #2: neighboring (non-nested) shapes in stacked mode must not let the background
     // bleed through their shared edge when rendered with anti-aliasing.
     @Test func stackedSiblingsHaveNoSeams() throws {
         // Anti-aliased (4×4 supersampled), so it's traced with smoothing rather than as pixel art.

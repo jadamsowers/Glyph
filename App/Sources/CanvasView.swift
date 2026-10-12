@@ -5,7 +5,6 @@ import VectorEngine
 /// original bitmap (left) and the vector render (right).
 struct CanvasView: View {
     @Environment(AppModel.self) private var model
-    @State private var zoom: Double = 1
     @State private var split: Double = 0.5
     @GestureState private var pinch: Double = 1
     /// Canvas backdrop, independent of the system appearance (persisted per user).
@@ -16,8 +15,10 @@ struct CanvasView: View {
             ZStack {
                 CheckerboardBackground(dark: darkBackground)
                 if let vector = model.vectorPicture {
+                    let fit = fittedSize(width: Double(vector.width), height: Double(vector.height), in: geo.size)
                     content(vector, size: geo.size)
-                        .scaleEffect(zoom * pinch)
+                        .scaleEffect(model.zoomRelativeToFit * pinch)
+                        .onChange(of: fit.width / Double(max(1, model.result?.width ?? vector.width)), initial: true) { model.fitScale = $1 }
                 } else {
                     ProgressView("Tracing…")
                 }
@@ -25,7 +26,7 @@ struct CanvasView: View {
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
             .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
-                .onEnded { zoom = max(0.25, min(16, zoom * $0.magnification)) })
+                .onEnded { model.setZoom(model.effectiveZoom * $0.magnification) })
             .overlay(alignment: .bottomTrailing) { zoomControls.padding(10) }
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 8) {
@@ -37,7 +38,7 @@ struct CanvasView: View {
         }
     }
 
-    /// The finished vector, with a labelled wipe against the original (vector left, original
+    /// The finished vector, with a labeled wipe against the original (vector left, original
     /// right) — unless the output was flipped or rotated, which would misalign the two.
     @ViewBuilder
     private func content(_ vector: CGImage, size: CGSize) -> some View {
@@ -77,14 +78,20 @@ struct CanvasView: View {
         .buttonStyle(.borderless)
         .padding(6)
         .background(.regularMaterial, in: .rect(cornerRadius: 6))
-        .help(darkBackground ? "Use a light background" : "Use a dark background")
+        .help((darkBackground ? "Use a light background" : "Use a dark background") + " (⇧⌘D)")
     }
 
     private var zoomControls: some View {
         HStack(spacing: 4) {
-            Button { zoom = max(0.25, zoom / 1.5) } label: { Image(systemName: "minus.magnifyingglass") }
-            Button { zoom = 1 } label: { Text("\(Int(zoom * 100))%").monospacedDigit().frame(minWidth: 44) }
-            Button { zoom = min(16, zoom * 1.5) } label: { Image(systemName: "plus.magnifyingglass") }
+            Button { model.zoomOut() } label: { Image(systemName: "minus.magnifyingglass") }
+                .help("Zoom Out (⌘−)")
+            // Click toggles between fitting the window and actual size.
+            Button { model.zoom == nil ? model.zoomToActualSize() : model.zoomToFit() } label: {
+                Text(model.zoom == nil ? "Fit" : "\(Int((model.effectiveZoom * 100).rounded()))%").monospacedDigit().frame(minWidth: 44)
+            }
+            .help(model.zoom == nil ? "Actual Size (⌘0)" : "Zoom to Fit (⌘9)")
+            Button { model.zoomIn() } label: { Image(systemName: "plus.magnifyingglass") }
+                .help("Zoom In (⌘=)")
         }
         .buttonStyle(.borderless)
         .padding(6)

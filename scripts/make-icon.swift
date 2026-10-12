@@ -16,7 +16,7 @@ func rgb(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
 
 /// Draws the icon on a 1024×1024 canvas (y-up CoreGraphics coordinates).
 func drawIcon(_ ctx: CGContext) {
-    // Body: macOS icon grid — 824pt squircle-ish rounded rect centred, soft drop shadow.
+    // Body: macOS icon grid — 824pt squircle-ish rounded rect centered, soft drop shadow.
     let body = CGRect(x: 100, y: 100, width: 824, height: 824)
     let bodyPath = CGPath(roundedRect: body, cornerWidth: 186, cornerHeight: 186, transform: nil)
     ctx.saveGState()
@@ -46,7 +46,7 @@ func drawIcon(_ ctx: CGContext) {
     // Warm gradient used by both halves of the disc.
     let warm = CGGradient(colorsSpace: srgb, colors: [rgb(0xffb340), rgb(0xff5a6e), rgb(0xd93ba8)] as CFArray, locations: [0, 0.55, 1])!
 
-    // Left half: the disc rasterized into chunky pixels (cell centres inside the circle).
+    // Left half: the disc rasterized into chunky pixels (cell centers inside the circle).
     ctx.saveGState()
     let pixels = CGMutablePath()
     var y = center.y - cell * 6

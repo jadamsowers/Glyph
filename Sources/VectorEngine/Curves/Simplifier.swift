@@ -6,7 +6,7 @@ import Foundation
 /// outline moves, in display pixels — the eye judges displacement, so a small glyph is not cheap
 /// just because its area is — times the boundary's visibility (contrast), plus a penalty for
 /// removing a sharp corner. Only interior anchors are removed, so chain endpoints (junctions
-/// shared with neighbours) never move and shared-edge output stays gap-free.
+/// shared with neighbors) never move and shared-edge output stays gap-free.
 enum Simplifier {
     /// Largest accepted merge cost (display px of displacement) for a Simplify level in 0…1.
     static func budget(_ simplify: Double) -> Double { 2.5 * pow(simplify, 1.5) }

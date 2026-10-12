@@ -24,6 +24,21 @@ final class AppModel {
         didSet { if options != oldValue { scheduleRun() } }
     }
 
+    // MARK: Zoom
+
+    /// Canvas zoom in screen points per output pixel (1 = actual size); nil = fit the window.
+    private(set) var zoom: Double?
+    /// The zoom at which the image fits the canvas; kept current by the canvas.
+    var fitScale: Double = 1
+    var effectiveZoom: Double { zoom ?? fitScale }
+    var zoomRelativeToFit: Double { effectiveZoom / max(fitScale, .ulpOfOne) }
+
+    func setZoom(_ z: Double) { zoom = max(0.05, min(32, z)) }
+    func zoomIn() { setZoom(effectiveZoom * 1.5) }
+    func zoomOut() { setZoom(effectiveZoom / 1.5) }
+    func zoomToActualSize() { zoom = 1 }
+    func zoomToFit() { zoom = nil }
+
     private var runTask: Task<Void, Never>?
     private var sourceURL: URL?
     private var pastedImage: CGImage?
@@ -38,6 +53,7 @@ final class AppModel {
     func open(_ url: URL) {
         sourceURL = url
         pastedImage = nil
+        zoom = nil
         reload()
     }
 
@@ -47,6 +63,7 @@ final class AppModel {
         else { errorMessage = "The clipboard doesn't contain an image."; return }
         sourceURL = nil
         pastedImage = cg
+        zoom = nil
         reload()
     }
 

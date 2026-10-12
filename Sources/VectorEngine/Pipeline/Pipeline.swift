@@ -116,7 +116,7 @@ public enum Pipeline {
     }
 
     /// Runs the pipeline off the caller's task, yielding each stage as it completes.
-    /// Cancelling the consuming task (or dropping the stream) cancels the run between stages.
+    /// Canceling the consuming task (or dropping the stream) cancels the run between stages.
     public static func stream(input: InputImage, options: Options, reusing previous: PipelineState? = nil)
         -> AsyncThrowingStream<StageEvent, Error>
     {

@@ -45,10 +45,10 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Gamma 0.2…5 (1 = unchanged).") var gamma: Double = 1
     @Flag(help: "Invert colors before tracing.") var invert = false
     @Option(help: "Median denoise radius 0–3 (for JPEG and scan noise).") var denoise: Int = 0
-    @Option(help: ArgumentHelp("Remove the background first: auto, solid (the border colour) or subject (Apple Vision).",
+    @Option(help: ArgumentHelp("Remove the background first: auto, solid (the border color) or subject (Apple Vision).",
                                valueName: "method")) var removeBg: BackgroundChoice?
-    @Option(help: "Background removal: colour tolerance (ΔE).") var bgTolerance: Double = 8
-    @Flag(help: "Background removal: keep enclosed background-coloured areas (e.g. inside an \"O\").") var keepEnclosed = false
+    @Option(help: "Background removal: color tolerance (ΔE).") var bgTolerance: Double = 8
+    @Flag(help: "Background removal: keep enclosed background-colored areas (e.g. inside an \"O\").") var keepEnclosed = false
     // Output
     @Option(help: "Flip the output: none, horizontal, vertical or both.") var flip: FlipChoice = .none
     @Option(help: "Rotate the output clockwise by 0, 90, 180 or 270 degrees.") var rotate: Int = 0

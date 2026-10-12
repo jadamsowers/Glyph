@@ -66,7 +66,7 @@ enum Centerline {
                 var remove: [Int] = []
                 for y in 0..<h {
                     for x in 0..<w where m[y * w + x] {
-                        // Neighbours P2…P9 clockwise from north.
+                        // Neighbors P2…P9 clockwise from north.
                         let n = [px(x, y - 1), px(x + 1, y - 1), px(x + 1, y), px(x + 1, y + 1),
                                  px(x, y + 1), px(x - 1, y + 1), px(x - 1, y), px(x - 1, y - 1)]
                         let b = n.reduce(0, +)
@@ -87,8 +87,8 @@ enum Centerline {
         return m
     }
 
-    /// Removes skeleton pixels whose neighbours stay 8-connected without them (staircase corners),
-    /// so every interior skeleton pixel has exactly two neighbours and junctions are real.
+    /// Removes skeleton pixels whose neighbors stay 8-connected without them (staircase corners),
+    /// so every interior skeleton pixel has exactly two neighbors and junctions are real.
     static func removeCorners(_ sk: [Bool], _ w: Int, _ h: Int) -> [Bool] {
         var m = sk
         func px(_ x: Int, _ y: Int) -> Bool { x >= 0 && y >= 0 && x < w && y < h && m[y * w + x] }
@@ -99,7 +99,7 @@ enum Centerline {
                 for x in 0..<w where m[y * w + x] {
                     let set = offsets.filter { px(x + $0.0, y + $0.1) }
                     guard set.count >= 2 && set.count <= 3 else { continue }
-                    // Redundant if the neighbours are one 8-connected group without this pixel
+                    // Redundant if the neighbors are one 8-connected group without this pixel
                     // (e.g. W and N touch diagonally): removing it can't break the skeleton.
                     var group = [set[0]], rest = Array(set.dropFirst())
                     var grew = true
@@ -135,11 +135,11 @@ enum Centerline {
 
     static let offsets = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
 
-    /// Splits the skeleton into paths between nodes (pixels with ≠ 2 neighbours) plus closed loops.
+    /// Splits the skeleton into paths between nodes (pixels with ≠ 2 neighbors) plus closed loops.
     static func split(_ sk: inout [Bool], _ w: Int, _ h: Int) -> [Path] {
         func on(_ p: Point) -> Bool { p.x >= 0 && p.y >= 0 && p.x < w && p.y < h && sk[p.y * w + p.x] }
-        func neighbours(_ p: Point) -> [Point] { offsets.map { Point(x: p.x + $0.0, y: p.y + $0.1) }.filter(on) }
-        func degree(_ p: Point) -> Int { neighbours(p).count }
+        func neighbors(_ p: Point) -> [Point] { offsets.map { Point(x: p.x + $0.0, y: p.y + $0.1) }.filter(on) }
+        func degree(_ p: Point) -> Int { neighbors(p).count }
         var usedEdges = Set<[Int]>()
         func edgeKey(_ a: Point, _ b: Point) -> [Int] { let i = a.y * w + a.x, j = b.y * w + b.x; return [min(i, j), max(i, j)] }
         var paths: [Path] = []
@@ -148,7 +148,7 @@ enum Centerline {
             usedEdges.insert(edgeKey(start, first))
             var prev = start, cur = first
             while degree(cur) == 2 {
-                guard let next = neighbours(cur).first(where: { $0 != prev && !usedEdges.contains(edgeKey(cur, $0)) }) else { break }
+                guard let next = neighbors(cur).first(where: { $0 != prev && !usedEdges.contains(edgeKey(cur, $0)) }) else { break }
                 usedEdges.insert(edgeKey(cur, next))
                 pts.append(next)
                 prev = cur; cur = next
@@ -160,14 +160,14 @@ enum Centerline {
         var nodes: [Point] = []
         for y in 0..<h { for x in 0..<w where sk[y * w + x] { let p = Point(x: x, y: y); if degree(p) != 2 { nodes.append(p) } } }
         for node in nodes {
-            for n in neighbours(node) where !usedEdges.contains(edgeKey(node, n)) { paths.append(walk(from: node, via: n)) }
+            for n in neighbors(node) where !usedEdges.contains(edgeKey(node, n)) { paths.append(walk(from: node, via: n)) }
             if degree(node) == 0 { paths.append(Path(points: [node], isClosed: false, freeStart: true, freeEnd: true)) }
         }
         // Loops with no node.
         for y in 0..<h {
             for x in 0..<w where sk[y * w + x] {
                 let p = Point(x: x, y: y)
-                for n in neighbours(p) where !usedEdges.contains(edgeKey(p, n)) { paths.append(walk(from: p, via: n)) }
+                for n in neighbors(p) where !usedEdges.contains(edgeKey(p, n)) { paths.append(walk(from: p, via: n)) }
             }
         }
         // Adjacent junction pixels form one junction: group them, drop the tiny paths inside a
@@ -179,7 +179,7 @@ enum Centerline {
             cluster[j] = centers.count
             while let p = stack.popLast() {
                 members.append(p)
-                for n in neighbours(p) where junctions.contains(n) && cluster[n] == nil { cluster[n] = centers.count; stack.append(n) }
+                for n in neighbors(p) where junctions.contains(n) && cluster[n] == nil { cluster[n] = centers.count; stack.append(n) }
             }
             let sum = members.reduce(Vec2.zero) { $0 + Vec2(Double($1.x) + 0.5, Double($1.y) + 0.5) }
             centers.append(sum * (1 / Double(members.count)))

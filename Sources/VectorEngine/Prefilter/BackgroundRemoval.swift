@@ -5,9 +5,9 @@ import Vision
 /// Makes the background transparent before tracing, so only the foreground is vectorized.
 public struct BackgroundRemoval: Sendable, Equatable {
     public enum Method: String, Sendable, CaseIterable {
-        /// Solid colour for logos and graphics, subject detection for photos.
+        /// Solid color for logos and graphics, subject detection for photos.
         case auto
-        /// Flood-fill the colour that dominates the image border.
+        /// Flood-fill the color that dominates the image border.
         case solid
         /// Apple Vision subject lifting (as in Photos and Preview).
         case subject
@@ -19,9 +19,9 @@ public struct BackgroundRemoval: Sendable, Equatable {
     }
 
     public var method: Method
-    /// How far (ΔE) a pixel may be from the background colour and still count as background.
+    /// How far (ΔE) a pixel may be from the background color and still count as background.
     public var tolerance: Double
-    /// Also clear same-coloured areas that don't touch the edge (e.g. the inside of an "O").
+    /// Also clear same-colored areas that don't touch the edge (e.g. the inside of an "O").
     public var removeEnclosed: Bool
 
     public init(method: Method = .auto, tolerance: Double = 8, removeEnclosed: Bool = true) {
@@ -31,13 +31,13 @@ public struct BackgroundRemoval: Sendable, Equatable {
 
 /// What background removal actually did.
 public enum BackgroundOutcome: Sendable, Equatable {
-    /// This border colour was removed.
+    /// This border color was removed.
     case solid(RGBA)
     /// Vision's subject mask was applied.
     case subject
-    /// Vision found no subject; this border colour was removed instead.
+    /// Vision found no subject; this border color was removed instead.
     case subjectFallback(RGBA)
-    /// No colour dominates the border, so nothing was removed.
+    /// No color dominates the border, so nothing was removed.
     case noDominantColor
     /// The border is already mostly transparent; nothing to do.
     case alreadyTransparent
@@ -48,7 +48,7 @@ public enum BackgroundOutcome: Sendable, Equatable {
         case .solid(let c): "Removed \(c.hex) background"
         case .subject: "Removed background around the subject"
         case .subjectFallback(let c): "No subject found; removed \(c.hex) background"
-        case .noDominantColor: "No single background colour found; nothing removed"
+        case .noDominantColor: "No single background color found; nothing removed"
         case .alreadyTransparent: "Background is already transparent"
         }
     }
@@ -60,14 +60,14 @@ public struct BackgroundParams: Sendable, Equatable {
     public var method: BackgroundRemoval.Method
     public var tolerance: Double
     public var removeEnclosed: Bool
-    /// Enclosed background-coloured areas smaller than this stay (highlights, dots).
+    /// Enclosed background-colored areas smaller than this stay (highlights, dots).
     public var minEnclosedArea: Int
-    /// Anti-aliased fringes are judged against the shape colour found within this many px.
+    /// Anti-aliased fringes are judged against the shape color found within this many px.
     public var fringeRadius = 2
 }
 
 enum BackgroundRemover {
-    /// Share of the opaque border that must match one colour for it to count as the background.
+    /// Share of the opaque border that must match one color for it to count as the background.
     static let minBorderShare = 0.6
 
     static func remove(_ b: Bitmap, _ p: BackgroundParams, alphaThreshold: UInt8 = 128,
@@ -92,7 +92,7 @@ enum BackgroundRemover {
         return out
     }
 
-    // MARK: Solid colour
+    // MARK: Solid color
 
     static func removeSolid(_ b: Bitmap, _ p: BackgroundParams, alphaThreshold: UInt8) -> (Bitmap, BackgroundOutcome) {
         let w = b.width, h = b.height
@@ -109,7 +109,7 @@ enum BackgroundRemover {
         let near = (0..<lab.count).map { opaque[$0] && lab[$0].distance(to: bgLab) <= p.tolerance }
         var removed = [Bool](repeating: false, count: lab.count)
 
-        // Background-coloured areas: those touching the edge, plus (optionally) large enclosed ones.
+        // Background-colored areas: those touching the edge, plus (optionally) large enclosed ones.
         var seen = [Bool](repeating: false, count: lab.count)
         for start in 0..<lab.count where near[start] && !seen[start] {
             var stack = [start], members: [Int] = [], touchesEdge = false
@@ -129,7 +129,7 @@ enum BackgroundRemover {
         }
 
         // Anti-aliased fringe: a pixel next to removed background goes with whichever it is closer
-        // to — the background, or the most distinct shape colour nearby — so shapes keep their size.
+        // to — the background, or the most distinct shape color nearby — so shapes keep their size.
         let r = max(1, p.fringeRadius)
         for _ in 0...r {
             var grow: [Int] = []
@@ -159,7 +159,7 @@ enum BackgroundRemover {
         return (out, .solid(bg))
     }
 
-    /// The border's most common colour (by 5-bit-per-channel bucket, then averaged over the
+    /// The border's most common color (by 5-bit-per-channel bucket, then averaged over the
     /// pixels within `tolerance` of it), if at least `minBorderShare` of the border matches it.
     static func dominantColor(_ pixels: [RGBA], tolerance: Double) -> RGBA? {
         var counts: [Int: Int] = [:]

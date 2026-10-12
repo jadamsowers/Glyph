@@ -92,7 +92,7 @@ enum PolygonBuilder {
     /// `densePoints`, plus detection of real pixel-level features. A bump or notch on a straight
     /// edge is a run that steps out, runs, and steps back by the same depth onto the line it
     /// left, with base runs on both sides at least as long as itself. (A rasterized curve's flat
-    /// top fails that: its neighbouring runs are shorter.) Features with area ≥ `minFeatureArea`
+    /// top fails that: its neighboring runs are shorter.) Features with area ≥ `minFeatureArea`
     /// are sampled at their exact lattice corners, returned as `protected` indices that
     /// simplification must keep and that become corners.
     static func samplePoints(_ chain: Chain, cornerRunLength: Int, minFeatureArea: Int?) -> (dense: [Vec2], protected: Set<Int>) {
@@ -148,7 +148,7 @@ enum PolygonBuilder {
                 if isFeature[k] || stepIn[k] { exact(pts[r.start + r.length].vec) }
                 continue
             }
-            // A flat side: its neighbours step in opposite directions (unlike a staircase diagonal)
+            // A flat side: its neighbors step in opposite directions (unlike a staircase diagonal)
             // and it is much longer than the next parallel runs. A circle's flat top is only ~2.7×
             // longer than those at any radius, so it isn't mistaken for a side. Along a side the
             // true edge runs on the pixel boundary, so its ends are sampled too.

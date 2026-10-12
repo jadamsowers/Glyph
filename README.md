@@ -7,7 +7,7 @@ A macOS app (and command-line tool) that turns bitmap images into clean, compact
 - **Pixel art** is detected and traced exactly along pixel edges.
 - **Small images** (under 256 px) are smoothly upscaled first, so anti-aliased edges trace with sub-pixel accuracy.
 - **Black-and-white** mode (ink on transparent, potrace-style), **centerline** tracing for line art (single stroked paths), **vector halftone** (dot or line screens), tone **adjustments** and median denoise, lossless **flip/rotate/DPI**, contrast-aware **perceptual simplification**, and **display-size** optimization.
-- **Background removal** before tracing: the solid border colour (flood fill, optionally clearing enclosed areas like the inside of an "O") for logos, or Apple Vision subject lifting for photos.
+- **Background removal** before tracing: the solid border color (flood fill, optionally clearing enclosed areas like the inside of an "O") for logos, or Apple Vision subject lifting for photos.
 
 ## Layout
 
