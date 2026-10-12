@@ -102,3 +102,17 @@ import Testing
         }
     }
 }
+
+extension PolygonTests {
+    // A real bump on a straight edge keeps its square corners (pixel-level feature protection).
+    @Test func bumpOnStraightEdgeStillKeepsCorners() throws {
+        let b = Bitmap(width: 60, height: 40) { x, y in
+            (y >= 20 || (y >= 17 && (26..<34).contains(x))) && (5..<55).contains(x) && y < 35 ? TestImages.blue : TestImages.white
+        }
+        var o = Options(kind: .logo, speckSize: 4)
+        o.exactPixels = false
+        let s = try Pipeline.run(input: InputImage(bitmap: b, originalWidth: 60, originalHeight: 40), options: o)
+        let corners = try #require(s.polygons).reduce(0) { $0 + $1.corners.filter { $0 }.count }
+        #expect(corners >= 8, "\(corners) corners")   // 4 of the rectangle + 4 of the bump
+    }
+}

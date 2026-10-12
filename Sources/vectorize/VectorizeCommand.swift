@@ -29,6 +29,7 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Long side (px) the SVG will be shown at; drops detail invisible at that size.") var displaySize: Int?
     @Option(help: "Longest side used for processing, in pixels.") var maxSize: Int = 2000
     @Option(help: "Upscale images whose long side is below this before tracing (0 = never).") var minSize: Int = 256
+    @Flag(help: "Trace at up to 4× resolution to keep tiny features (slower; may add thin outlines on soft edges).") var highDetail = false
     @Option(help: "Write a PNG picture of every pipeline stage into this directory.") var stages: String?
     // Black and white
     @Flag(help: "Black-and-white: trace dark pixels as one ink color on transparent.") var mono = false
@@ -105,6 +106,7 @@ struct VectorizeCommand: ParsableCommand {
         options.border = border
         options.adjust = Adjustments(brightness: brightness, contrast: contrast, saturation: saturation, gamma: gamma, invert: invert)
         options.denoise = denoise
+        options.highDetail = highDetail
         if let removeBg {
             options.removeBackground = BackgroundRemoval(method: BackgroundRemoval.Method(rawValue: removeBg.rawValue)!,
                                                          tolerance: bgTolerance, removeEnclosed: !keepEnclosed)
@@ -117,7 +119,8 @@ struct VectorizeCommand: ParsableCommand {
         options.advanced.minProcessingDimension = minSize
 
         // Exact pixel tracing wants the original pixels, never an upscaled blur of them.
-        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize, minDimension: pixels == .on ? 0 : minSize)
+        let image = try InputImage.load(contentsOf: inURL, maxDimension: maxSize, minDimension: pixels == .on ? 0 : minSize,
+                                        highDetail: highDetail && pixels != .on)
         let state = try Pipeline.run(input: image, options: options) { event in
             guard verbose else { return }
             let c = event.duration.components

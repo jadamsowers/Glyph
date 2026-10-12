@@ -92,7 +92,8 @@ final class AppModel {
             } else { return }
             errorMessage = nil
             original = cg
-            input = InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension, minDimension: minDimension)
+            input = InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension, minDimension: minDimension,
+                               highDetail: options.highDetail && options.exactPixels != true)
             state = nil
             vector = nil
             run()
@@ -106,15 +107,19 @@ final class AppModel {
 
     // MARK: Running
 
-    private var loadedLimits: (Int, Int, Bool?)?
+    /// The input-shaping settings the current input was decoded with.
+    private var loadedLimits: (Int, Int, Bool?, Bool)?
+    private var inputLimits: (Int, Int, Bool?, Bool) {
+        (options.advanced.maxProcessingDimension, options.advanced.minProcessingDimension, options.exactPixels, options.highDetail)
+    }
 
     private func scheduleRun() {
         runTask?.cancel()
         runTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
             guard let self, !Task.isCancelled else { return }
-            // Size limits and exact-pixel mode shape the input itself.
-            let limits = (options.advanced.maxProcessingDimension, options.advanced.minProcessingDimension, options.exactPixels)
+            // Size limits, exact pixels and high detail shape the input itself.
+            let limits = inputLimits
             if let loaded = loadedLimits, loaded != limits { loadedLimits = limits; reload() } else { loadedLimits = limits; run() }
         }
     }
@@ -124,7 +129,7 @@ final class AppModel {
     private func run() {
         guard let input else { return }
         runTask?.cancel()
-        loadedLimits = (options.advanced.maxProcessingDimension, options.advanced.minProcessingDimension, options.exactPixels)
+        loadedLimits = inputLimits
         generation += 1
         let gen = generation, previous = state, options = options
         isRunning = true

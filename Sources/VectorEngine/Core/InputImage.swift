@@ -38,11 +38,18 @@ public struct InputImage: Sendable {
     /// an integer factor between 4× and 8×: at icon sizes, anti-aliased edge shades then yield
     /// sub-pixel edge positions and the tracer's pixel-sized heuristics work at a sensible scale.
     /// (Smaller factors measured worse: too little sub-pixel gain for the extra detail.)
-    public init(cgImage: CGImage, maxDimension: Int, minDimension: Int = 0) {
+    ///
+    /// `highDetail` upscales larger images too — up to 4×, keeping the processed long side within
+    /// `highDetailMaxDimension` — so features only a pixel or two wide in the source (small stars,
+    /// ® marks) are traced instead of melting into blobs. Slower, and it can leave thin outlines
+    /// along anti-aliased edges whose blend shades match another palette color.
+    public init(cgImage: CGImage, maxDimension: Int, minDimension: Int = 0, highDetail: Bool = false) {
         let w = cgImage.width, h = cgImage.height
         let longSide = max(w, h)
-        if minDimension > 0 && longSide < minDimension {
-            let factor = min(8, max(4, Int((2 * Double(minDimension) / Double(longSide)).rounded(.up))))
+        let small = minDimension > 0 && longSide < minDimension
+        if small || highDetail {
+            let factor = small ? min(8, max(4, Int((2 * Double(minDimension) / Double(longSide)).rounded(.up))))
+                               : min(4, InputImage.highDetailMaxDimension / longSide)
             let original = Bitmap(cgImage: cgImage)
             // Pixel art's steps are real detail; blurring them would destroy exactly that.
             if factor > 1 && !Analyzer.looksLikePixelArt(original) {
@@ -55,8 +62,11 @@ public struct InputImage: Sendable {
         self.init(bitmap: Bitmap(cgImage: cgImage, width: pw, height: ph), originalWidth: w, originalHeight: h)
     }
 
-    public static func load(contentsOf url: URL, maxDimension: Int, minDimension: Int = 0) throws -> InputImage {
-        InputImage(cgImage: try orientedImage(contentsOf: url), maxDimension: maxDimension, minDimension: minDimension)
+    /// Processed long side that high-detail upscaling stays within.
+    public static let highDetailMaxDimension = 6000
+
+    public static func load(contentsOf url: URL, maxDimension: Int, minDimension: Int = 0, highDetail: Bool = false) throws -> InputImage {
+        InputImage(cgImage: try orientedImage(contentsOf: url), maxDimension: maxDimension, minDimension: minDimension, highDetail: highDetail)
     }
 
     /// Decodes the first image in a file at full size, applying its EXIF orientation (portrait

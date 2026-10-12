@@ -140,6 +140,9 @@ public struct Options: Sendable, Equatable {
     /// Line art: single stroked paths down the middle of strokes. Implies black-and-white
     /// (default `Monochrome()` when `monochrome` is nil).
     public var centerline = false
+    /// Trace at up to 4× resolution to keep features a pixel or two wide (applied when the image
+    /// is loaded; see `InputImage.init(cgImage:maxDimension:minDimension:highDetail:)`).
+    public var highDetail = false
     /// Make the background transparent before tracing (nil = keep it).
     public var removeBackground: BackgroundRemoval?
     public var advanced: AdvancedOptions

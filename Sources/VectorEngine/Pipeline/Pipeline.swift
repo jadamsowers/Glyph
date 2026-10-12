@@ -268,6 +268,6 @@ public enum Vectorizer {
 
     public static func vectorize(contentsOf url: URL, options: Options = Options()) throws -> VectorResult {
         try vectorize(InputImage.load(contentsOf: url, maxDimension: options.advanced.maxProcessingDimension,
-                                      minDimension: options.advanced.minProcessingDimension), options: options)
+                                      minDimension: options.advanced.minProcessingDimension, highDetail: options.highDetail), options: options)
     }
 }

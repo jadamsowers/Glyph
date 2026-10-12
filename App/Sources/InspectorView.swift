@@ -67,6 +67,8 @@ struct InspectorView: View {
                            auto: autoSmoothness, range: 0...1, step: 0.05, format: "%.2f")
                 AutoSlider(title: "Speck size", value: $model.options.speckSize.asDouble,
                            auto: autoSpeck, range: 0...200, step: 1, format: "%.0f px")
+                Toggle("High detail", isOn: $model.options.highDetail)
+                    .help("Trace at up to 4× resolution to keep features a pixel or two wide (small stars, ® marks). Slower, and may add thin outlines along soft edges.")
             } }
 
             AdjustSection(adjust: $model.options.adjust, denoise: $model.options.denoise)
