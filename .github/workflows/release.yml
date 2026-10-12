@@ -1,0 +1,61 @@
+name: Release
+
+# Every pull request merged into main publishes a release: Glyph.app and the vectorize CLI,
+# both universal (Apple silicon + Intel). Can also be run by hand from the Actions tab.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Version
+        id: version
+        run: |
+          # MARKETING_VERSION from App/project.yml (e.g. 1.0) plus the run number: 1.0.42.
+          base=$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([0-9.]*\)"\{0,1\}/\1/p' App/project.yml)
+          echo "version=${base}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - run: xcodebuild -version && swift --version
+
+      - name: Test engine
+        run: swift test
+
+      - name: Build and package
+        run: scripts/package-release.sh "${{ steps.version.outputs.version }}" "${{ github.run_number }}"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          cat > notes.md <<NOTES
+          ${TITLE:+**${TITLE}**}
+
+          **Install:** unzip \`Glyph-${VERSION}.zip\` and move Glyph to Applications. The app is
+          not notarized, so the first time, right-click it and choose **Open** (or run
+          \`xattr -dr com.apple.quarantine /Applications/Glyph.app\`).
+
+          **CLI:** unzip \`vectorize-${VERSION}-macos.zip\` and put \`vectorize\` on your PATH.
+          NOTES
+          gh release create "v${VERSION}" dist/*.zip \
+            --target "$(git rev-parse HEAD)" \
+            --title "Glyph ${VERSION}" \
+            --notes-file notes.md \
+            --generate-notes

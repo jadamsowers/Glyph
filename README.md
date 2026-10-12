@@ -21,6 +21,10 @@ A macOS app (and command-line tool) that turns bitmap images into clean, compact
 | `scripts/` | Sample-image and app-icon generators |
 | `docs/` | Design spec and implementation plan |
 
+## Releases
+
+Every pull request merged into `main` publishes a [release](https://github.com/jadamsowers/Glyph/releases) with `Glyph-<version>.zip` (the app) and `vectorize-<version>-macos.zip` (the CLI), both universal. Versions are `MARKETING_VERSION` from `App/project.yml` plus the workflow run number (e.g. 1.0.12). The app is ad-hoc signed, not notarized: right-click → Open the first time. `scripts/package-release.sh <version>` builds the same artifacts into `dist/` locally. Pull requests run the tests and an app build first (`.github/workflows/ci.yml`).
+
 ## Build
 
 Requires Xcode (Swift 6) on macOS 14+.
