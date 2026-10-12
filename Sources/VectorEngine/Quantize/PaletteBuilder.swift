@@ -57,10 +57,13 @@ enum PaletteBuilder {
             accs[target].n += bucket.n
             accs[target].flat += bucket.flat
         }
-        let clusters = accs.map { a in
+        let clusters: [ColorCluster] = accs.map { a in
             let c = RGBA(UInt8(a.r / a.n), UInt8(a.g / a.n), UInt8(a.b / a.n))
             return ColorCluster(color: c, lab: Lab(c), count: a.n, flatCount: a.flat)
-        }.sorted { $0.count != $1.count ? $0.count > $1.count : $0.color.rgbKey < $1.color.rgbKey }
+        }.sorted { (a: ColorCluster, b: ColorCluster) -> Bool in
+            if a.count != b.count { return a.count > b.count }
+            return a.color.rgbKey < b.color.rgbKey
+        }
         return (clusters, opaque)
     }
 

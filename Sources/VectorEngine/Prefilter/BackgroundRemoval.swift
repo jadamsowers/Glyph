@@ -135,9 +135,8 @@ enum BackgroundRemover {
             var grow: [Int] = []
             for i in 0..<lab.count where opaque[i] && !removed[i] {
                 let x = i % w, y = i / w
-                let touches = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].contains { nx, ny in
-                    nx >= 0 && ny >= 0 && nx < w && ny < h && removed[ny * w + nx]
-                }
+                let touches = (x > 0 && removed[i - 1]) || (x + 1 < w && removed[i + 1])
+                    || (y > 0 && removed[i - w]) || (y + 1 < h && removed[i + w])
                 guard touches else { continue }
                 var shape = lab[i], farthest = lab[i].distance(to: bgLab)
                 for ny in max(0, y - r)...min(h - 1, y + r) {
