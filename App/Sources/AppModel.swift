@@ -15,9 +15,9 @@ final class AppModel {
     private(set) var original: CGImage?
     private(set) var state: PipelineState?
     private(set) var isRunning = false
-    /// The finished vector, rendered off the main thread. The previous one stays visible while a
-    /// re-run is in progress.
-    private(set) var vectorPicture: CGImage?
+    /// The finished vector's paths, built off the main thread and drawn live by the canvas at any
+    /// zoom. The previous one stays visible while a re-run is in progress.
+    private(set) var vector: ShapeRenderer.Prepared?
     var errorMessage: String?
 
     var options = Options() {
@@ -31,13 +31,22 @@ final class AppModel {
     /// The zoom at which the image fits the canvas; kept current by the canvas.
     var fitScale: Double = 1
     var effectiveZoom: Double { zoom ?? fitScale }
-    var zoomRelativeToFit: Double { effectiveZoom / max(fitScale, .ulpOfOne) }
+    /// Offset of the image's center from the canvas center (points).
+    var pan = CGSize.zero
+    /// Compare divider position, as a fraction of the canvas width (vector left, original right).
+    var split = 0.5
 
-    func setZoom(_ z: Double) { zoom = max(0.05, min(32, z)) }
+    /// Zooms keeping `anchor` (an offset from the canvas center, in points) fixed on screen.
+    func setZoom(_ z: Double, anchor: CGPoint = .zero) {
+        let old = effectiveZoom, new = max(0.05, min(64, z))
+        let k = new / old
+        pan = CGSize(width: anchor.x - (anchor.x - pan.width) * k, height: anchor.y - (anchor.y - pan.height) * k)
+        zoom = new
+    }
     func zoomIn() { setZoom(effectiveZoom * 1.5) }
     func zoomOut() { setZoom(effectiveZoom / 1.5) }
-    func zoomToActualSize() { zoom = 1 }
-    func zoomToFit() { zoom = nil }
+    func zoomToActualSize() { setZoom(1) }
+    func zoomToFit() { zoom = nil; pan = .zero }
 
     private var runTask: Task<Void, Never>?
     private var sourceURL: URL?
@@ -53,7 +62,7 @@ final class AppModel {
     func open(_ url: URL) {
         sourceURL = url
         pastedImage = nil
-        zoom = nil
+        zoomToFit()
         reload()
     }
 
@@ -63,7 +72,7 @@ final class AppModel {
         else { errorMessage = "The clipboard doesn't contain an image."; return }
         sourceURL = nil
         pastedImage = cg
-        zoom = nil
+        zoomToFit()
         reload()
     }
 
@@ -85,7 +94,7 @@ final class AppModel {
             original = cg
             input = InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension, minDimension: minDimension)
             state = nil
-            vectorPicture = nil
+            vector = nil
             run()
         } catch {
             errorMessage = error.localizedDescription
@@ -126,22 +135,21 @@ final class AppModel {
                     try Task.checkCancellation()
                     last = event.state
                 }
-                guard let last else { return }
-                let longSide = Double(max(last.input.bitmap.width, last.input.bitmap.height))
-                let picture = StageRenderer.image(for: .svg, in: last, scale: max(1, min(4, (1600 / longSide).rounded(.down))))
+                guard let last, let result = last.result else { return }
+                let prepared = ShapeRenderer.Prepared(result.shapes, seamStroke: result.seamStroke)
                 try Task.checkCancellation()
-                await self?.finish(last, picture: picture, generation: gen, error: nil)
+                await self?.finish(last, vector: prepared, generation: gen, error: nil)
             } catch is CancellationError {
             } catch {
-                await self?.finish(nil, picture: nil, generation: gen, error: error)
+                await self?.finish(nil, vector: nil, generation: gen, error: error)
             }
         }
     }
 
-    private func finish(_ finished: PipelineState?, picture: CGImage?, generation gen: Int, error: Error?) {
+    private func finish(_ finished: PipelineState?, vector prepared: ShapeRenderer.Prepared?, generation gen: Int, error: Error?) {
         guard gen == generation else { return }
         isRunning = false
-        if let finished { state = finished; vectorPicture = picture }
+        if let finished { state = finished; vector = prepared }
         if let error { errorMessage = error.localizedDescription }
     }
 

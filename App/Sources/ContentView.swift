@@ -24,6 +24,7 @@ struct ContentView: View {
             model.open(url)
             return true
         } isTargeted: { isDropTargeted = $0 }
+        .task { await SelfSnapshot.runIfRequested(model) }
         .alert("Couldn't vectorize", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } })

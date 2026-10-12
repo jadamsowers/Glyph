@@ -20,25 +20,49 @@ public enum ShapeRenderer {
     /// `seamStroke` first strokes every outline in its own color beneath all fills, so anti-aliased
     /// edges between neighbors show shape colors instead of the background.
     public static func fill(_ shapes: [VectorShape], seamStroke: Double = 0, in ctx: CGContext) {
+        Prepared(shapes, seamStroke: seamStroke).draw(in: ctx)
+    }
+
+    /// Shapes with their paths built once, for drawing repeatedly (e.g. a live, zoomable canvas).
+    public struct Prepared: @unchecked Sendable {
+        public let shapes: [VectorShape]
+        public let seamStroke: Double
+        let paths: [CGPath]
+        let colors: [CGColor]
+
+        public init(_ shapes: [VectorShape], seamStroke: Double = 0) {
+            self.shapes = shapes
+            self.seamStroke = seamStroke
+            paths = shapes.map(ShapeRenderer.path(for:))
+            colors = shapes.map { ShapeRenderer.cgColor($0.color) }
+        }
+
+        /// Draws like `ShapeRenderer.fill` into a y-down context.
+        public func draw(in ctx: CGContext) {
+            ShapeRenderer.draw(shapes, paths: paths, colors: colors, seamStroke: seamStroke, in: ctx)
+        }
+    }
+
+    static func draw(_ shapes: [VectorShape], paths: [CGPath], colors: [CGColor], seamStroke: Double, in ctx: CGContext) {
         if seamStroke > 0 {
             ctx.setLineWidth(seamStroke)
             ctx.setLineJoin(.round)
-            for s in shapes {
-                ctx.addPath(path(for: s))
-                ctx.setStrokeColor(cgColor(s.color))
+            for i in shapes.indices {
+                ctx.addPath(paths[i])
+                ctx.setStrokeColor(colors[i])
                 ctx.strokePath()
             }
         }
-        for s in shapes {
-            ctx.addPath(path(for: s))
+        for (i, s) in shapes.enumerated() {
+            ctx.addPath(paths[i])
             if let width = s.stroke {
-                ctx.setStrokeColor(cgColor(s.color))
+                ctx.setStrokeColor(colors[i])
                 ctx.setLineWidth(width)
                 ctx.setLineCap(.round)
                 ctx.setLineJoin(.round)
                 ctx.strokePath()
             } else {
-                ctx.setFillColor(cgColor(s.color))
+                ctx.setFillColor(colors[i])
                 ctx.fillPath(using: .evenOdd)
             }
         }
