@@ -7,3 +7,4 @@ out/
 .superpowers/
 App/build/
 App/build.log
+dist/
