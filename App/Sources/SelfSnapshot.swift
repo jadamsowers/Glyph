@@ -50,8 +50,9 @@ enum SelfSnapshot {
 import SwiftUI
 
 /// Development aid for simulator screenshots (`xcrun simctl io booted screenshot`): with
-/// GLYPH_SNAPSHOT_IMAGE set, opens that image at launch; GLYPH_SNAPSHOT_ZOOM sets the zoom and
-/// GLYPH_SNAPSHOT_INSPECTOR=1 opens the inspector. Does nothing otherwise.
+/// GLYPH_SNAPSHOT_IMAGE set, opens that image at launch; GLYPH_SNAPSHOT_ZOOM sets the zoom,
+/// GLYPH_SNAPSHOT_INSPECTOR=1 opens the inspector, and GLYPH_SNAPSHOT_SVG writes the finished SVG
+/// there (to compare with the Mac). Does nothing otherwise.
 enum SelfSnapshot {
     static var showsInspector: Bool { ProcessInfo.processInfo.environment["GLYPH_SNAPSHOT_INSPECTOR"] != nil }
 
@@ -60,9 +61,11 @@ enum SelfSnapshot {
         let env = ProcessInfo.processInfo.environment
         guard let image = env["GLYPH_SNAPSHOT_IMAGE"] else { return }
         model.open(URL(fileURLWithPath: image))
-        guard let zoom = env["GLYPH_SNAPSHOT_ZOOM"].flatMap(Double.init) else { return }
         while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
-        model.setZoom(zoom)
+        if let zoom = env["GLYPH_SNAPSHOT_ZOOM"].flatMap(Double.init) { model.setZoom(zoom) }
+        if let out = env["GLYPH_SNAPSHOT_SVG"], let svg = model.result?.svg {
+            try? svg.write(toFile: out, atomically: true, encoding: .utf8)
+        }
     }
 }
 #endif
