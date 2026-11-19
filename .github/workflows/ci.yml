@@ -18,3 +18,5 @@ jobs:
         run: swift test
       - name: Build app
         run: xcodebuild -project App/Glyph.xcodeproj -scheme Glyph -configuration Release -derivedDataPath App/build -destination 'generic/platform=macOS' -quiet build
+      - name: Build iOS app
+        run: xcodebuild -project App/Glyph.xcodeproj -scheme Glyph -configuration Release -derivedDataPath App/build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO -quiet build

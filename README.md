@@ -1,6 +1,6 @@
 # Glyph
 
-A macOS app (and command-line tool) that turns bitmap images into clean, compact SVGs.
+An app for Mac, iPhone and iPad (and a command-line tool) that turns bitmap images into clean, compact SVGs.
 
 - **Logos, icons and UI** are traced with shared edges (no gaps between shapes), straight lines kept straight, sharp corners kept sharp, and smooth curves fitted with as few Bézier segments as possible.
 - **Photos** are posterized into smooth stacked regions.
@@ -8,7 +8,7 @@ A macOS app (and command-line tool) that turns bitmap images into clean, compact
 - **Small images** (under 256 px) are smoothly upscaled first, so anti-aliased edges trace with sub-pixel accuracy.
 - **Black-and-white** mode (ink on transparent, potrace-style), **centerline** tracing for line art (single stroked paths), **vector halftone** (dot or line screens), tone **adjustments** and median denoise, lossless **flip/rotate/DPI**, contrast-aware **perceptual simplification**, and **display-size** optimization.
 - **Background removal** before tracing: the solid border color (flood fill, optionally clearing enclosed areas like the inside of an "O") for logos, or Apple Vision subject lifting for photos.
-- **Curve editing** in the app (⌘E): select a boundary and drag its anchors and Bézier handles. Each boundary is shared by the colors on both sides, so they stay in sync; junctions move every boundary that meets there; smooth anchors keep their handles collinear (⌥ breaks them). Edits are undoable and are what Save and Copy export.
+- **Curve editing** in the Mac app (⌘E): select a boundary and drag its anchors and Bézier handles. Each boundary is shared by the colors on both sides, so they stay in sync; junctions move every boundary that meets there; smooth anchors keep their handles collinear (⌥ breaks them). Edits are undoable and are what Save and Copy export.
 
 ## Layout
 
@@ -16,16 +16,16 @@ A macOS app (and command-line tool) that turns bitmap images into clean, compact
 |---|---|
 | `Sources/VectorEngine` | The tracing engine (Swift package, no dependencies) |
 | `Sources/vectorize` | Command-line tool |
-| `App/` | SwiftUI app (`project.yml` → XcodeGen → `Glyph.xcodeproj`) |
+| `App/` | SwiftUI app for macOS and iOS, one target (`project.yml` → XcodeGen → `Glyph.xcodeproj`) |
 | `Tests/VectorEngineTests` | swift-testing suite |
 | `scripts/` | Sample-image and app-icon generators, release and TestFlight scripts |
 | `docs/` | Design spec and implementation plan |
 
 ## Releases
 
-Every pull request merged into `main` publishes a [release](https://github.com/jadamsowers/Glyph/releases) with `Glyph-<version>.zip` (the app) and `vectorize-<version>-macos.zip` (the CLI), both universal. Versions are `MARKETING_VERSION` from `App/project.yml` plus the workflow run number (e.g. 1.0.12). The app is ad-hoc signed, not notarized: right-click → Open the first time. `scripts/package-release.sh <version>` builds the same artifacts into `dist/` locally. Pull requests run the tests and an app build first (`.github/workflows/ci.yml`).
+Every pull request merged into `main` publishes a [release](https://github.com/jadamsowers/Glyph/releases) with `Glyph-<version>.zip` (the app) and `vectorize-<version>-macos.zip` (the CLI), both universal. Versions are `MARKETING_VERSION` from `App/project.yml` plus the workflow run number (e.g. 1.0.12). The app is ad-hoc signed, not notarized: right-click → Open the first time. `scripts/package-release.sh <version>` builds the same artifacts into `dist/` locally. Pull requests run the tests and Mac and iOS app builds first (`.github/workflows/ci.yml`).
 
-TestFlight builds are uploaded from a Mac with `scripts/testflight.sh`; see [docs/testflight.md](docs/testflight.md).
+The iPhone and iPad app ships only through TestFlight and the App Store. TestFlight builds for all three are uploaded from a Mac with `scripts/testflight.sh`; see [docs/testflight.md](docs/testflight.md).
 
 ## Build
 
