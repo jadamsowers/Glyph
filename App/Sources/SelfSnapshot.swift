@@ -46,4 +46,23 @@ enum SelfSnapshot {
         NSApp.terminate(nil)
     }
 }
+#else
+import SwiftUI
+
+/// Development aid for simulator screenshots (`xcrun simctl io booted screenshot`): with
+/// GLYPH_SNAPSHOT_IMAGE set, opens that image at launch; GLYPH_SNAPSHOT_ZOOM sets the zoom and
+/// GLYPH_SNAPSHOT_INSPECTOR=1 opens the inspector. Does nothing otherwise.
+enum SelfSnapshot {
+    static var showsInspector: Bool { ProcessInfo.processInfo.environment["GLYPH_SNAPSHOT_INSPECTOR"] != nil }
+
+    @MainActor
+    static func runIfRequested(_ model: AppModel) async {
+        let env = ProcessInfo.processInfo.environment
+        guard let image = env["GLYPH_SNAPSHOT_IMAGE"] else { return }
+        model.open(URL(fileURLWithPath: image))
+        guard let zoom = env["GLYPH_SNAPSHOT_ZOOM"].flatMap(Double.init) else { return }
+        while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+        model.setZoom(zoom)
+    }
+}
 #endif

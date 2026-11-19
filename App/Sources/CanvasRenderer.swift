@@ -90,7 +90,7 @@ struct CanvasRenderer {
         if let c = selectedChain, c < editor.curves.count {
             // A white casing keeps the outline visible on any fill.
             let p = path(c).copy(using: [t]) ?? path(c)
-            for (color, width) in [(CGColor.white, 3.5), (accent, 1.5)] {
+            for (color, width) in [(white, 3.5), (accent, 1.5)] {
                 ctx.addPath(p)
                 ctx.setStrokeColor(color)
                 ctx.setLineWidth(width)
@@ -106,7 +106,7 @@ struct CanvasRenderer {
             ctx.strokePath()
             for h in handles {
                 let r = CGRect(x: h.handle.x - 3.5, y: h.handle.y - 3.5, width: 7, height: 7)
-                ctx.setFillColor(.white)
+                ctx.setFillColor(white)
                 ctx.fillEllipse(in: r)
                 ctx.setStrokeColor(accent)
                 ctx.strokeEllipse(in: r)
@@ -116,7 +116,7 @@ struct CanvasRenderer {
                 let r = CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)
                 ctx.setFillColor(accent)
                 ctx.fill(r)
-                ctx.setStrokeColor(.white)
+                ctx.setStrokeColor(white)
                 ctx.stroke(r)
             }
         }
@@ -140,14 +140,14 @@ struct CanvasRenderer {
     private func drawDivider(_ ctx: CGContext, at x: CGFloat) {
         ctx.saveGState()
         ctx.setShadow(offset: .zero, blur: 2, color: CGColor(gray: 0, alpha: 0.5))
-        ctx.setFillColor(.white)
+        ctx.setFillColor(white)
         ctx.fill(CGRect(x: x - 1, y: 0, width: 2, height: bounds.height))
         let knob = CGRect(x: x - 14, y: bounds.midY - 14, width: 28, height: 28)
         ctx.setFillColor(accent)
         ctx.fillEllipse(in: knob)
         ctx.restoreGState()
         // ← → arrows
-        ctx.setFillColor(.white)
+        ctx.setFillColor(white)
         for dir: CGFloat in [-1, 1] {
             let tip = CGPoint(x: x + dir * 9, y: bounds.midY)
             ctx.move(to: tip)
@@ -158,6 +158,9 @@ struct CanvasRenderer {
         ctx.fillPath()
     }
 }
+
+/// `CGColor.white` is macOS-only.
+private let white = CGColor(gray: 1, alpha: 1)
 
 private extension Vec2 {
     var cg: CGPoint { CGPoint(x: x, y: y) }

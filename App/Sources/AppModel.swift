@@ -75,6 +75,9 @@ final class AppModel {
     /// Opens an encoded image (PNG, JPEG, HEIC, …), e.g. from Photos, the camera or a drop.
     func open(imageData: Data, name: String) { open(.data(imageData, name: name)) }
 
+    /// Opens an already-decoded, upright image (e.g. from the camera).
+    func open(image: CGImage, name: String) { open(.image(image, name: name)) }
+
     private func open(_ newSource: Source) {
         clearEdits()
         source = newSource
@@ -379,7 +382,7 @@ final class AppModel {
     }
 
     /// `image` drawn with its orientation applied.
-    private static func upright(_ image: UIImage) -> CGImage? {
+    nonisolated static func upright(_ image: UIImage) -> CGImage? {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let size = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)

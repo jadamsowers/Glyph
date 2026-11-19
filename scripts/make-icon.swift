@@ -14,23 +14,38 @@ func rgb(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
     CGColor(srgbRed: CGFloat((hex >> 16) & 0xff) / 255, green: CGFloat((hex >> 8) & 0xff) / 255, blue: CGFloat(hex & 0xff) / 255, alpha: a)
 }
 
-/// Draws the icon on a 1024×1024 canvas (y-up CoreGraphics coordinates).
-func drawIcon(_ ctx: CGContext) {
-    // Body: macOS icon grid — 824pt squircle-ish rounded rect centered, soft drop shadow.
-    let body = CGRect(x: 100, y: 100, width: 824, height: 824)
-    let bodyPath = CGPath(roundedRect: body, cornerWidth: 186, cornerHeight: 186, transform: nil)
-    ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: rgb(0x000000, 0.35))
-    ctx.addPath(bodyPath)
-    ctx.setFillColor(rgb(0x1b1640))
-    ctx.fillPath()
-    ctx.restoreGState()
+/// Draws the icon on a 1024×1024 canvas (y-up CoreGraphics coordinates). `fullBleed` is the iOS
+/// variant: the same artwork scaled so its square body fills the canvas, with no corners or shadow
+/// (iOS rounds the corners itself and rejects transparency).
+func drawIcon(_ ctx: CGContext, fullBleed: Bool = false) {
+    // Body: macOS icon grid — 824pt squircle-ish rounded rect centered, soft drop shadow. Full
+    // bleed enlarges the artwork a little and makes the body the whole canvas.
+    let artScale: CGFloat = 1.12
+    let body = fullBleed
+        ? CGRect(x: 512 - 512 / artScale, y: 512 - 512 / artScale, width: 1024 / artScale, height: 1024 / artScale)
+        : CGRect(x: 100, y: 100, width: 824, height: 824)
+    let bodyPath: CGPath
+    if fullBleed {
+        ctx.translateBy(x: 512, y: 512)
+        ctx.scaleBy(x: artScale, y: artScale)
+        ctx.translateBy(x: -512, y: -512)
+        bodyPath = CGPath(rect: body, transform: nil)
+    } else {
+        bodyPath = CGPath(roundedRect: body, cornerWidth: 186, cornerHeight: 186, transform: nil)
+        ctx.saveGState()
+        ctx.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: rgb(0x000000, 0.35))
+        ctx.addPath(bodyPath)
+        ctx.setFillColor(rgb(0x1b1640))
+        ctx.fillPath()
+        ctx.restoreGState()
+    }
 
     ctx.saveGState()
     ctx.addPath(bodyPath)
     ctx.clip()
     let bg = CGGradient(colorsSpace: srgb, colors: [rgb(0x2a1f6b), rgb(0x120d33)] as CFArray, locations: [0, 1])!
-    ctx.drawLinearGradient(bg, start: CGPoint(x: 200, y: 924), end: CGPoint(x: 824, y: 100), options: [])
+    ctx.drawLinearGradient(bg, start: CGPoint(x: 200, y: 924), end: CGPoint(x: 824, y: 100),
+                           options: fullBleed ? [.drawsBeforeStartLocation, .drawsAfterEndLocation] : [])
 
     // Faint pixel grid over the left half, hinting at the bitmap world.
     let cell: CGFloat = 52
@@ -38,9 +53,9 @@ func drawIcon(_ ctx: CGContext) {
     ctx.setStrokeColor(rgb(0xffffff, 0.06))
     ctx.setLineWidth(2)
     var gx = center.x - cell * 8
-    while gx <= center.x { ctx.move(to: CGPoint(x: gx, y: 100)); ctx.addLine(to: CGPoint(x: gx, y: 924)); gx += cell }
+    while gx <= center.x { ctx.move(to: CGPoint(x: gx, y: body.minY)); ctx.addLine(to: CGPoint(x: gx, y: body.maxY)); gx += cell }
     var gy = center.y - cell * 8
-    while gy <= 924 { ctx.move(to: CGPoint(x: 100, y: gy)); ctx.addLine(to: CGPoint(x: center.x, y: gy)); gy += cell }
+    while gy <= body.maxY { ctx.move(to: CGPoint(x: body.minX, y: gy)); ctx.addLine(to: CGPoint(x: center.x, y: gy)); gy += cell }
     ctx.strokePath()
 
     // Warm gradient used by both halves of the disc.
@@ -114,12 +129,13 @@ func drawIcon(_ ctx: CGContext) {
     ctx.restoreGState()
 }
 
-func render(_ size: Int) -> CGImage {
+func render(_ size: Int, fullBleed: Bool = false) -> CGImage {
+    let alpha: CGImageAlphaInfo = fullBleed ? .noneSkipLast : .premultipliedLast
     let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: srgb,
-                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                        bitmapInfo: alpha.rawValue)!
     ctx.interpolationQuality = .high
     ctx.scaleBy(x: CGFloat(size) / 1024, y: CGFloat(size) / 1024)
-    drawIcon(ctx)
+    drawIcon(ctx, fullBleed: fullBleed)
     return ctx.makeImage()!
 }
 
@@ -137,6 +153,9 @@ for base in [16, 32, 128, 256, 512] {
         images.append(["idiom": "mac", "size": "\(base)x\(base)", "scale": "\(scale)x", "filename": name])
     }
 }
+// iOS takes one 1024 px image and derives the other sizes.
+writePNG(render(1024, fullBleed: true), "icon_ios_1024.png")
+images.append(["idiom": "universal", "platform": "ios", "size": "1024x1024", "filename": "icon_ios_1024.png"])
 let contents: [String: Any] = ["images": images, "info": ["version": 1, "author": "xcode"]]
 try JSONSerialization.data(withJSONObject: contents, options: [.prettyPrinted, .sortedKeys])
     .write(to: outDir.appendingPathComponent("Contents.json"))
