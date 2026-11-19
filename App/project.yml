@@ -1,6 +1,6 @@
 name: Glyph
 options:
-  bundleIdPrefix: com.jadam
+  bundleIdPrefix: co.jadam
   deploymentTarget:
     macOS: "14.0"
 packages:
@@ -16,7 +16,7 @@ targets:
         product: VectorEngine
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jadam.Glyph
+        PRODUCT_BUNDLE_IDENTIFIER: co.jadam.glyph
         PRODUCT_NAME: Glyph
         SWIFT_VERSION: "6.0"
         MARKETING_VERSION: "1.0"
@@ -24,6 +24,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Glyph
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.graphics-design
+        # Uses no encryption of its own, so App Store Connect skips the export-compliance question.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         CODE_SIGN_ENTITLEMENTS: Glyph.entitlements
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
