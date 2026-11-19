@@ -69,6 +69,10 @@ enum SelfSnapshot {
         model.open(URL(fileURLWithPath: image))
         while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
         if let zoom = env["GLYPH_SNAPSHOT_ZOOM"].flatMap(Double.init) { model.setZoom(zoom) }
+        // GLYPH_SNAPSHOT_PAN=x,y offsets the image (points) after zooming.
+        if let pan = env["GLYPH_SNAPSHOT_PAN"]?.split(separator: ",").compactMap({ Double($0) }), pan.count == 2 {
+            model.pan = CGSize(width: pan[0], height: pan[1])
+        }
         if let out = env["GLYPH_SNAPSHOT_SVG"], let svg = model.result?.svg {
             try? svg.write(toFile: out, atomically: true, encoding: .utf8)
         }
