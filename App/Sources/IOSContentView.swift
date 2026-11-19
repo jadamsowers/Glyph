@@ -15,6 +15,13 @@ struct IOSContentView: View {
     @State private var showCamera = false
     @State private var showFileImporter = false
     @State private var showFileExporter = false
+    @State private var detent = PresentationDetent.fraction(sheetFraction)
+
+    /// Height of the iPhone settings sheet at its smaller detent, as a fraction of the window.
+    private static let sheetFraction = 0.42
+    /// The iPhone settings sheet is up: the canvas makes room for it, and the toolbar's other
+    /// actions wait (a view under a sheet can't present pickers or menus).
+    private var sheetIsUp: Bool { sizeClass == .compact && showInspector }
 
     var body: some View {
         NavigationStack {
@@ -23,7 +30,10 @@ struct IOSContentView: View {
                     IOSEmptyStateView(choosePhoto: { showPhotoPicker = true }, takePhoto: { showCamera = true },
                                       chooseFile: { showFileImporter = true }, paste: { model.paste() })
                 } else {
-                    CanvasView()
+                    GeometryReader { geo in
+                        CanvasView()
+                            .padding(.bottom, sheetIsUp && detent != .large ? sheetInset(geo) : 0)
+                    }
                 }
             }
             .navigationTitle(model.input == nil ? "Glyph" : model.sourceName)
@@ -31,8 +41,9 @@ struct IOSContentView: View {
             .toolbar { toolbar }
             .inspector(isPresented: $showInspector) {
                 InspectorView()
-                    .presentationDetents([.medium, .large])
-                    .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                    .modifier(SheetAlerts(isSheet: sizeClass == .compact))
+                    .presentationDetents([.fraction(Self.sheetFraction), .large], selection: $detent)
+                    .presentationBackgroundInteraction(.enabled(upThrough: .fraction(Self.sheetFraction)))
             }
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
@@ -74,6 +85,12 @@ struct IOSContentView: View {
         .task { await SelfSnapshot.runIfRequested(model) }
     }
 
+    /// How much of the canvas the sheet covers: its share of the window, less the bottom safe area.
+    private func sheetInset(_ geo: GeometryProxy) -> CGFloat {
+        let window = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
+        return max(0, window * Self.sheetFraction - geo.safeAreaInsets.bottom)
+    }
+
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Menu {
@@ -86,6 +103,7 @@ struct IOSContentView: View {
             } label: {
                 Label("Open", systemImage: "plus")
             }
+            .disabled(sheetIsUp)
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
             if model.input != nil {
@@ -98,6 +116,7 @@ struct IOSContentView: View {
                 } label: {
                     Label("Style", systemImage: "paintpalette")
                 }
+                .disabled(sheetIsUp)
                 Menu {
                     if let doc = model.svgDocument {
                         ShareLink(item: doc, preview: SharePreview(doc.name)) { Label("Share…", systemImage: "square.and.arrow.up") }
@@ -107,12 +126,21 @@ struct IOSContentView: View {
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
-                .disabled(model.svgDocument == nil)
+                .disabled(model.svgDocument == nil || sheetIsUp)
                 Button { showInspector.toggle() } label: {
                     Label("Settings", systemImage: "slider.horizontal.3")
                 }
             }
         }
+    }
+}
+
+/// On iPhone the inspector is a sheet, and the view beneath it can't present the model's alerts.
+private struct SheetAlerts: ViewModifier {
+    var isSheet: Bool
+
+    func body(content: Content) -> some View {
+        if isSheet { content.modifier(ModelAlerts()) } else { content }
     }
 }
 

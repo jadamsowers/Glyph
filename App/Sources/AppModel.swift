@@ -42,7 +42,8 @@ final class AppModel {
 
     /// Zooms keeping `anchor` (an offset from the canvas center, in points) fixed on screen.
     func setZoom(_ z: Double, anchor: CGPoint = .zero) {
-        let old = effectiveZoom, new = max(0.05, min(64, z))
+        // The floor stays below fit, so huge images (48 MP photos on a phone) can still zoom out.
+        let old = effectiveZoom, new = max(min(0.05, fitScale * 0.5), min(64, z))
         let k = new / old
         pan = CGSize(width: anchor.x - (anchor.x - pan.width) * k, height: anchor.y - (anchor.y - pan.height) * k)
         zoom = new
@@ -385,6 +386,7 @@ final class AppModel {
     nonisolated static func upright(_ image: UIImage) -> CGImage? {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
+        format.preferredRange = .standard   // 8-bit sRGB, not a 16-bit extended-range copy
         let size = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.cgImage
     }

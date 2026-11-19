@@ -18,6 +18,7 @@
 		5DEE2FD7905734C6B33CE588 /* CanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */; };
 		6A75EFB0D308732659EC3867 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7395389E93A5A349623A97D /* CameraPicker.swift */; };
 		8FACA07D0EA977F6DCBE62A9 /* SVGDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F59121AB292B4310C235A8B /* SVGDocument.swift */; };
+		B4890CCA42336068A4611DA1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 50F926E4C5C3BDA6F73015B3 /* PrivacyInfo.xcprivacy */; };
 		DA7C7641E49028A8E3B7DE73 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D7A42EC68C43C90F778987 /* IOSContentView.swift */; };
 		EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F14525930CAEF4A7CA1506C /* Assets.xcassets */; };
 		F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F740250A1024E3A4A4CA997D /* InspectorView.swift */; };
@@ -28,6 +29,7 @@
 		0893E4DAC7CA21E6BBD13A39 /* SelfSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfSnapshot.swift; sourceTree = "<group>"; };
 		24D7A42EC68C43C90F778987 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
 		4F59121AB292B4310C235A8B /* SVGDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGDocument.swift; sourceTree = "<group>"; };
+		50F926E4C5C3BDA6F73015B3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5F14525930CAEF4A7CA1506C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasView.swift; sourceTree = "<group>"; };
 		6C433D84F165A2D0D0E2C099 /* glyph */ = {isa = PBXFileReference; lastKnownFileType = folder; name = glyph; path = ..; sourceTree = SOURCE_ROOT; };
@@ -97,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				5F14525930CAEF4A7CA1506C /* Assets.xcassets */,
+				50F926E4C5C3BDA6F73015B3 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -174,6 +177,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */,
+				B4890CCA42336068A4611DA1 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,11 +219,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_FILE[sdk=iphoneos*]" = "Glyph-iOS-Info.plist";
+				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Glyph-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Glyph;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Glyph traces photos you take into vector art.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -252,11 +257,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_FILE[sdk=iphoneos*]" = "Glyph-iOS-Info.plist";
+				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Glyph-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Glyph;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Glyph traces photos you take into vector art.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

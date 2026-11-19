@@ -44,7 +44,7 @@ final class CanvasUIView: UIView, UIGestureRecognizerDelegate {
 
     /// How close (points) to the divider a drag must start to move it.
     private let dividerSlop: CGFloat = 22
-    private enum DragMode { case divider, pan(start: CGSize) }
+    private enum DragMode { case divider, pan }
     private var dragMode: DragMode?
 
     override init(frame: CGRect) {
@@ -111,17 +111,22 @@ final class CanvasUIView: UIView, UIGestureRecognizerDelegate {
         guard let model, vector != nil else { return }
         switch g.state {
         case .began:
-            let start = g.location(in: self)
+            // Where the touch went down: the recognizer starts only after some movement.
+            let now = g.location(in: self), moved = g.translation(in: self)
+            let start = CGPoint(x: now.x - moved.x, y: now.y - moved.y)
             let onDivider = original != nil && g.numberOfTouches == 1 && abs(start.x - bounds.width * split) <= dividerSlop
-            dragMode = onDivider ? .divider : .pan(start: model.pan)
+            dragMode = onDivider ? .divider : .pan
+            g.setTranslation(.zero, in: self)
         case .changed:
             switch dragMode {
             case .divider:
                 guard bounds.width > 0 else { return }
                 model.split = max(0, min(1, g.location(in: self).x / bounds.width))
-            case .pan(let start):
+            case .pan:
+                // Incremental, so a simultaneous pinch's anchoring of `pan` isn't overwritten.
                 let t = g.translation(in: self)
-                model.pan = CGSize(width: start.width + t.x, height: start.height + t.y)
+                model.pan = CGSize(width: model.pan.width + t.x, height: model.pan.height + t.y)
+                g.setTranslation(.zero, in: self)
             case nil:
                 break
             }

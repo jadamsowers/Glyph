@@ -36,7 +36,9 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         INFOPLIST_KEY_NSCameraUsageDescription: Glyph traces photos you take into vector art.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        # One model per app, so one window: merged into the generated Info.plist.
+        INFOPLIST_FILE[sdk=iphoneos*]: Glyph-iOS-Info.plist
+        INFOPLIST_FILE[sdk=iphonesimulator*]: Glyph-iOS-Info.plist
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         CODE_SIGN_STYLE: Manual

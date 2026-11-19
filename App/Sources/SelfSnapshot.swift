@@ -10,6 +10,11 @@ enum SelfSnapshot {
     static func runIfRequested(_ model: AppModel) async {
         let env = ProcessInfo.processInfo.environment
         guard let image = env["GLYPH_SNAPSHOT_IMAGE"], let out = env["GLYPH_SNAPSHOT_OUT"] else { return }
+        // GLYPH_SNAPSHOT_SIZE=1440x900 sizes the window's content (in points) for store screenshots.
+        if let size = env["GLYPH_SNAPSHOT_SIZE"]?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+            NSApp.windows.first(where: \.isVisible)?.setContentSize(NSSize(width: size[0], height: size[1]))
+        }
+        applyShotOptions(model, env)
         model.open(URL(fileURLWithPath: image))
         while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
         var steps: [(String, () -> Void)] = [
@@ -60,6 +65,7 @@ enum SelfSnapshot {
     static func runIfRequested(_ model: AppModel) async {
         let env = ProcessInfo.processInfo.environment
         guard let image = env["GLYPH_SNAPSHOT_IMAGE"] else { return }
+        applyShotOptions(model, env)
         model.open(URL(fileURLWithPath: image))
         while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
         if let zoom = env["GLYPH_SNAPSHOT_ZOOM"].flatMap(Double.init) { model.setZoom(zoom) }
@@ -69,3 +75,13 @@ enum SelfSnapshot {
     }
 }
 #endif
+
+extension SelfSnapshot {
+    /// GLYPH_SNAPSHOT_STYLE (an output style's name, e.g. "Halftone") and GLYPH_SNAPSHOT_SPLIT (the
+    /// compare divider, 0–1) shape a screenshot.
+    @MainActor
+    static func applyShotOptions(_ model: AppModel, _ env: [String: String]) {
+        if let style = env["GLYPH_SNAPSHOT_STYLE"].flatMap(OutputStyle.init(rawValue:)) { style.apply(to: &model.options) }
+        if let split = env["GLYPH_SNAPSHOT_SPLIT"].flatMap(Double.init) { model.split = split }
+    }
+}
