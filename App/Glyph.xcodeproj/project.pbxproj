@@ -15,6 +15,7 @@
 		4601177403F550AF2316CC7F /* StyleSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2247A80D2A7592E4A193333 /* StyleSections.swift */; };
 		554816182F2FD0BCEC635347 /* VectorCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC82D57A59A08942BF6B4B20 /* VectorCanvas.swift */; };
 		5DEE2FD7905734C6B33CE588 /* CanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */; };
+		8FACA07D0EA977F6DCBE62A9 /* SVGDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F59121AB292B4310C235A8B /* SVGDocument.swift */; };
 		EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F14525930CAEF4A7CA1506C /* Assets.xcassets */; };
 		F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F740250A1024E3A4A4CA997D /* InspectorView.swift */; };
 		F848176441E112CC92A10A8C /* CanvasRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70736F43550E612215AE3A0B /* CanvasRenderer.swift */; };
@@ -22,6 +23,7 @@
 
 /* Begin PBXFileReference section */
 		0893E4DAC7CA21E6BBD13A39 /* SelfSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfSnapshot.swift; sourceTree = "<group>"; };
+		4F59121AB292B4310C235A8B /* SVGDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGDocument.swift; sourceTree = "<group>"; };
 		5F14525930CAEF4A7CA1506C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasView.swift; sourceTree = "<group>"; };
 		6C433D84F165A2D0D0E2C099 /* glyph */ = {isa = PBXFileReference; lastKnownFileType = folder; name = glyph; path = ..; sourceTree = SOURCE_ROOT; };
@@ -76,6 +78,7 @@
 				F740250A1024E3A4A4CA997D /* InspectorView.swift */,
 				0893E4DAC7CA21E6BBD13A39 /* SelfSnapshot.swift */,
 				E2247A80D2A7592E4A193333 /* StyleSections.swift */,
+				4F59121AB292B4310C235A8B /* SVGDocument.swift */,
 				FC82D57A59A08942BF6B4B20 /* VectorCanvas.swift */,
 			);
 			path = Sources;
@@ -178,6 +181,7 @@
 				4346192C8B5F1BD514400B99 /* ContentView.swift in Sources */,
 				3F1E4138A2B562646FC7F59D /* GlyphApp.swift in Sources */,
 				F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */,
+				8FACA07D0EA977F6DCBE62A9 /* SVGDocument.swift in Sources */,
 				28B6CF0C762B5B21E09F7F51 /* SelfSnapshot.swift in Sources */,
 				4601177403F550AF2316CC7F /* StyleSections.swift in Sources */,
 				554816182F2FD0BCEC635347 /* VectorCanvas.swift in Sources */,

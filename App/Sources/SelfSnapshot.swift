@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import VectorEngine
 
@@ -45,3 +46,4 @@ enum SelfSnapshot {
         NSApp.terminate(nil)
     }
 }
+#endif

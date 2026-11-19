@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import ImageIO
 import UniformTypeIdentifiers
 import Observation
@@ -49,8 +53,15 @@ final class AppModel {
     func zoomToFit() { zoom = nil; pan = .zero }
 
     private var runTask: Task<Void, Never>?
-    private var sourceURL: URL?
-    private var pastedImage: CGImage?
+
+    /// Where the open image came from, kept so input-shaping settings can re-decode it. Photos and
+    /// pastes keep their encoded data rather than a decoded image, to stay light between reloads.
+    private enum Source {
+        case file(URL)
+        case data(Data, name: String)
+        case image(CGImage, name: String)
+    }
+    private var source: Source?
 
     var result: VectorResult? { state?.result }
 
@@ -59,23 +70,36 @@ final class AppModel {
 
     // MARK: Loading
 
-    func open(_ url: URL) {
+    func open(_ url: URL) { open(.file(url)) }
+
+    /// Opens an encoded image (PNG, JPEG, HEIC, …), e.g. from Photos, the camera or a drop.
+    func open(imageData: Data, name: String) { open(.data(imageData, name: name)) }
+
+    private func open(_ newSource: Source) {
         clearEdits()
-        sourceURL = url
-        pastedImage = nil
+        source = newSource
         zoomToFit()
         reload()
     }
 
     func paste() {
+        #if os(macOS)
         guard let image = NSImage(pasteboard: .general),
               let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { errorMessage = "The clipboard doesn't contain an image."; return }
-        clearEdits()
-        sourceURL = nil
-        pastedImage = cg
-        zoomToFit()
-        reload()
+        open(.image(cg, name: "Pasted Image"))
+        #else
+        // Prefer the encoded data (it keeps EXIF orientation); else draw the image upright.
+        let pasteboard = UIPasteboard.general
+        if let type = pasteboard.types.first(where: { UTType($0)?.conforms(to: .image) == true }),
+           let data = pasteboard.data(forPasteboardType: type) {
+            open(.data(data, name: "Pasted Image"))
+        } else if let image = pasteboard.image, let cg = Self.upright(image) {
+            open(.image(cg, name: "Pasted Image"))
+        } else {
+            errorMessage = "The clipboard doesn't contain an image."
+        }
+        #endif
     }
 
     /// Re-decodes the source — needed when settings that shape the input change (size limits,
@@ -83,17 +107,28 @@ final class AppModel {
     func reload() {
         do {
             let cg: CGImage
-            if let url = sourceURL {
+            switch source {
+            case .file(let url):
                 let accessing = url.startAccessingSecurityScopedResource()
                 defer { if accessing { url.stopAccessingSecurityScopedResource() } }
                 cg = try InputImage.orientedImage(contentsOf: url)
                 sourceName = url.deletingPathExtension().lastPathComponent
-            } else if let pastedImage {
-                cg = pastedImage
-                sourceName = "Pasted Image"
-            } else { return }
+            case .data(let data, let name):
+                cg = try InputImage.orientedImage(data: data)
+                sourceName = name
+            case .image(let image, let name):
+                cg = image
+                sourceName = name
+            case nil:
+                return
+            }
             errorMessage = nil
+            #if os(macOS)
             original = cg
+            #else
+            // Only the compare wipe uses this; tracing below always gets the full decode.
+            original = Self.downsampled(cg, maxDimension: 4096)
+            #endif
             input = InputImage(cgImage: cg, maxDimension: options.advanced.maxProcessingDimension, minDimension: minDimension,
                                highDetail: options.highDetail && options.exactPixels != true)
             clearEdits()
@@ -296,11 +331,18 @@ final class AppModel {
 
     // MARK: Export
 
+    /// File name for exports: the source's name with an .svg extension.
+    var exportName: String { (sourceName.isEmpty ? "Glyph" : sourceName) + ".svg" }
+
+    /// The finished SVG for sharing and Save to Files; nil until a trace is done.
+    var svgDocument: SVGDocument? { result.map { SVGDocument(svg: $0.svg, name: exportName) } }
+
+    #if os(macOS)
     func saveSVG() {
         guard let svg = result?.svg else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.svg]
-        panel.nameFieldStringValue = (sourceName.isEmpty ? "Glyph" : sourceName) + ".svg"
+        panel.nameFieldStringValue = exportName
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try svg.write(to: url, atomically: true, encoding: .utf8)
@@ -309,9 +351,39 @@ final class AppModel {
         }
     }
 
+    #endif
+
     func copySVG() {
         guard let svg = result?.svg else { return }
+        #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(svg, forType: .string)
+        #else
+        UIPasteboard.general.string = svg
+        #endif
     }
+
+    #if os(iOS)
+    /// A copy of `image` no larger than `maxDimension` on its long side (the image itself if it fits).
+    private static func downsampled(_ image: CGImage, maxDimension: Int) -> CGImage {
+        let long = max(image.width, image.height)
+        guard long > maxDimension else { return image }
+        let s = Double(maxDimension) / Double(long)
+        let w = max(1, Int((Double(image.width) * s).rounded())), h = max(1, Int((Double(image.height) * s).rounded()))
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return ctx.makeImage() ?? image
+    }
+
+    /// `image` drawn with its orientation applied.
+    private static func upright(_ image: UIImage) -> CGImage? {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let size = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.cgImage
+    }
+    #endif
 }

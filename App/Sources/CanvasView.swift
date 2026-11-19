@@ -18,7 +18,9 @@ struct CanvasView: View {
             if comparing { CompareLabel(text: "Vector").padding(14).opacity(model.split > 0.12 ? 1 : 0) }
         }
         .overlay(alignment: .bottomTrailing) { zoomControls.padding(10) }
+        #if os(macOS)
         .overlay(alignment: .bottomLeading) { editControls.padding(10) }
+        #endif
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 8) {
                 if comparing { CompareLabel(text: "Original").opacity(model.split < 0.8 ? 1 : 0) }
@@ -31,6 +33,7 @@ struct CanvasView: View {
 
     private var comparing: Bool { model.vector != nil && model.original != nil && !model.isReoriented && !model.isEditing }
 
+    #if os(macOS)
     @ViewBuilder private var editControls: some View {
         if model.isEditing {
             HStack(spacing: 10) {
@@ -62,6 +65,8 @@ struct CanvasView: View {
             .background(.regularMaterial, in: .rect(cornerRadius: 6))
         }
     }
+
+    #endif
 
     private var backgroundToggle: some View {
         Button { darkBackground.toggle() } label: {

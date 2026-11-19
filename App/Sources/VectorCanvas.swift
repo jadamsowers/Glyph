@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import SwiftUI
 import VectorEngine
@@ -210,3 +211,4 @@ final class CanvasNSView: NSView {
         model.setZoom(model.effectiveZoom * factor, anchor: CGPoint(x: p.x - center.x, y: p.y - center.y))
     }
 }
+#endif
