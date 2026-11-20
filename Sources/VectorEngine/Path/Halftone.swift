@@ -34,8 +34,9 @@ public struct Halftone: Sendable, Equatable {
 enum HalftoneGenerator {
     /// Dots (area ∝ darkness) or line segments (thickness ∝ darkness) on a rotated grid with pitch
     /// `cell` (processing px), in processing coordinates. Darkness is 1 − brightness, composited
-    /// over white, averaged over a 3×3 sampling of each cell. Each dot is its own shape: overlapping
-    /// dots stay ink under the even-odd rule, and small paths draw far faster than one huge one.
+    /// over white, averaged over a 3×3 sampling of each cell. Each dot is its own shape, so
+    /// overlapping dots stay ink under the even-odd rule; each row of line segments is one shape,
+    /// so segments that abut fill without seams. Small paths also draw far faster than one huge one.
     static func shapes(_ b: Bitmap, cell: Double, _ h: Halftone) -> [VectorShape] {
         let w = Double(b.width), hgt = Double(b.height)
         let a = h.angle * .pi / 180
@@ -57,8 +58,9 @@ enum HalftoneGenerator {
             }
             return n == 0 ? 0 : sum / Double(n)
         }
-        var subpaths: [Subpath] = []
+        var shapes: [VectorShape] = []
         for j in -reach...reach {
+            var row: [Subpath] = []
             for i in -reach...reach {
                 // Half-cell offset: cells tile the image instead of straddling its edges.
                 let p = center + u * ((Double(i) + 0.5) * cell) + v * ((Double(j) + 0.5) * cell)
@@ -68,15 +70,16 @@ enum HalftoneGenerator {
                 switch h.shape {
                 case .dot:
                     // Area d·cell² → radius cell·√(d/π); a little overlap lets dark areas go solid.
-                    subpaths.append(circle(p, radius: min(cell * 0.75, cell * (d / .pi).squareRoot())))
+                    shapes.append(VectorShape(color: h.ink, subpaths: [circle(p, radius: min(cell * 0.75, cell * (d / .pi).squareRoot()))]))
                 case .line:
                     let half = u * (cell / 2), t = v * (cell * d / 2)
                     let c0 = p - half - t
-                    subpaths.append(Subpath(start: c0, segments: [.line(to: p + half - t), .line(to: p + half + t), .line(to: p - half + t), .line(to: c0)]))
+                    row.append(Subpath(start: c0, segments: [.line(to: p + half - t), .line(to: p + half + t), .line(to: p - half + t), .line(to: c0)]))
                 }
             }
+            if !row.isEmpty { shapes.append(VectorShape(color: h.ink, subpaths: row)) }
         }
-        return subpaths.map { VectorShape(color: h.ink, subpaths: [$0]) }
+        return shapes
     }
 
     /// A circle as four cubic quarter-arcs.
