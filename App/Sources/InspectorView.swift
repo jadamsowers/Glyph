@@ -104,10 +104,13 @@ struct InspectorView: View {
                     LabeledContent("SVG size", value: ByteCountFormatter.string(fromByteCount: Int64(result.stats.byteCount), countStyle: .file))
                     LabeledContent("Visible difference", value: result.stats.visibleDifference.isNaN ? "n/a" : String(format: "%.1f%%", result.stats.visibleDifference * 100))
                         .help("Share of pixels that look different (ΔE > 10) from the source when rendered")
+                    // On iOS, export lives in the toolbar.
+                    #if os(macOS)
                     HStack {
                         Button("Save SVG…") { model.saveSVG() }
                         Button("Copy") { model.copySVG() }
                     }
+                    #endif
                 }
             }
         }
@@ -146,7 +149,11 @@ struct AutoSlider: View {
                 Text(title)
                 Spacer()
                 if value != nil {
+                    #if os(macOS)
                     Button("Auto") { value = nil }.buttonStyle(.link).font(.caption)
+                    #else
+                    Button("Auto") { value = nil }.buttonStyle(.borderless).font(.caption)
+                    #endif
                 }
                 Text(String(format: format, value ?? auto))
                     .monospacedDigit()

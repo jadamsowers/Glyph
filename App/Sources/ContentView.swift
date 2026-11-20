@@ -3,9 +3,16 @@ import VectorEngine
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
+    #if os(macOS)
     @State private var isDropTargeted = false
+    #endif
 
     var body: some View {
+        layout.modifier(ModelAlerts())
+    }
+
+    #if os(macOS)
+    private var layout: some View {
         HStack(spacing: 0) {
             Group {
                 if model.input == nil {
@@ -26,26 +33,40 @@ struct ContentView: View {
             return true
         } isTargeted: { isDropTargeted = $0 }
         .task { await SelfSnapshot.runIfRequested(model) }
-        .alert("Discard curve edits?", isPresented: Binding(
-            get: { model.pendingOptions != nil },
-            set: { if !$0 { model.pendingOptions = nil } })
-        ) {
-            Button("Discard Edits", role: .destructive) { model.discardEditsAndApplyPendingOptions() }
-            Button("Cancel", role: .cancel) { model.pendingOptions = nil }
-        } message: {
-            Text("This setting re-traces the image, which replaces the curves you edited.")
-        }
-        .alert("Couldn't vectorize", isPresented: Binding(
-            get: { model.errorMessage != nil },
-            set: { if !$0 { model.errorMessage = nil } })
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(model.errorMessage ?? "")
-        }
+    }
+    #else
+    private var layout: some View { IOSContentView() }
+    #endif
+}
+
+/// The model's confirmations and errors. On iPhone the inspector sheet carries a copy too, since
+/// the view under a sheet can't present.
+struct ModelAlerts: ViewModifier {
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        content
+            .alert("Discard curve edits?", isPresented: Binding(
+                get: { model.pendingOptions != nil },
+                set: { if !$0 { model.pendingOptions = nil } })
+            ) {
+                Button("Discard Edits", role: .destructive) { model.discardEditsAndApplyPendingOptions() }
+                Button("Cancel", role: .cancel) { model.pendingOptions = nil }
+            } message: {
+                Text("This setting re-traces the image, which replaces the curves you edited.")
+            }
+            .alert("Couldn't vectorize", isPresented: Binding(
+                get: { model.errorMessage != nil },
+                set: { if !$0 { model.errorMessage = nil } })
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(model.errorMessage ?? "")
+            }
     }
 }
 
+#if os(macOS)
 struct EmptyStateView: View {
     var isTargeted: Bool
 
@@ -63,3 +84,4 @@ struct EmptyStateView: View {
         .background(isTargeted ? Color.accentColor.opacity(0.08) : .clear)
     }
 }
+#endif

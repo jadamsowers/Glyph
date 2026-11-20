@@ -72,18 +72,28 @@ public struct InputImage: Sendable {
     /// Decodes the first image in a file at full size, applying its EXIF orientation (portrait
     /// phone photos are often stored sideways with an orientation tag).
     public static func orientedImage(contentsOf url: URL) throws -> CGImage {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-              let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), let image = orientedImage(source)
         else { throw VectorEngineError.unreadableImage(url.path) }
+        return image
+    }
+
+    /// Decodes encoded image data (PNG, JPEG, HEIC, …) the same way as `orientedImage(contentsOf:)`.
+    public static func orientedImage(data: Data) throws -> CGImage {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil), let image = orientedImage(source)
+        else { throw VectorEngineError.unreadableImage("image data") }
+        return image
+    }
+
+    private static func orientedImage(_ source: CGImageSource) -> CGImage? {
+        guard let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int
+        else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: max(w, h),
             kCGImageSourceShouldCacheImmediately: true,
         ]
-        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
-        else { throw VectorEngineError.unreadableImage(url.path) }
-        return image
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }

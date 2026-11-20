@@ -3,13 +3,14 @@ options:
   bundleIdPrefix: co.jadam
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
 packages:
   VectorEngine:
     path: ..
 targets:
   Glyph:
     type: application
-    platform: macOS
+    supportedDestinations: [macOS, iOS]
     sources: [Sources, Resources]
     dependencies:
       - package: VectorEngine
@@ -26,7 +27,20 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.graphics-design
         # Uses no encryption of its own, so App Store Connect skips the export-compliance question.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
-        CODE_SIGN_ENTITLEMENTS: Glyph.entitlements
+        # The sandbox is macOS-only; iOS asks only for extra memory headroom for large photos.
+        CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: Glyph.entitlements
+        CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]: Glyph-iOS.entitlements
+        CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]: Glyph-iOS.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        INFOPLIST_KEY_NSCameraUsageDescription: Glyph traces photos you take into vector art.
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # One model per app, so one window: merged into the generated Info.plist.
+        INFOPLIST_FILE[sdk=iphoneos*]: Glyph-iOS-Info.plist
+        INFOPLIST_FILE[sdk=iphonesimulator*]: Glyph-iOS-Info.plist
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         ENABLE_HARDENED_RUNTIME: YES

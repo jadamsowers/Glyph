@@ -51,6 +51,18 @@ import UniformTypeIdentifiers
         #expect(input.bitmap.width == 10 && input.bitmap.height == 30)
     }
 
+    // Photos and paste on iOS hand over encoded data: it must be oriented the same way as a file.
+    @Test func exifOrientationIsAppliedToData() throws {
+        let stored = Bitmap(width: 30, height: 10) { x, _ in x < 15 ? TestImages.red : TestImages.blue }
+        let data = NSMutableData()
+        let dest = try #require(CGImageDestinationCreateWithData(data as CFMutableData, UTType.jpeg.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, stored.makeCGImage(), [kCGImagePropertyOrientation: 6] as CFDictionary)
+        #expect(CGImageDestinationFinalize(dest))
+        let image = try InputImage.orientedImage(data: data as Data)
+        #expect(image.width == 10 && image.height == 30)
+        #expect(throws: VectorEngineError.self) { try InputImage.orientedImage(data: Data("not an image".utf8)) }
+    }
+
     // Review #5: pure noise is not a logo.
     @Test func whiteNoiseIsPhoto() {
         var rng = SplitMix64(seed: 99)

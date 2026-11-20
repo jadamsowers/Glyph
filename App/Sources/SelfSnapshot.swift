@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import VectorEngine
 
@@ -9,6 +10,11 @@ enum SelfSnapshot {
     static func runIfRequested(_ model: AppModel) async {
         let env = ProcessInfo.processInfo.environment
         guard let image = env["GLYPH_SNAPSHOT_IMAGE"], let out = env["GLYPH_SNAPSHOT_OUT"] else { return }
+        // GLYPH_SNAPSHOT_SIZE=1440x900 sizes the window's content (in points) for store screenshots.
+        if let size = env["GLYPH_SNAPSHOT_SIZE"]?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+            NSApp.windows.first(where: \.isVisible)?.setContentSize(NSSize(width: size[0], height: size[1]))
+        }
+        applyShotOptions(model, env)
         model.open(URL(fileURLWithPath: image))
         while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
         var steps: [(String, () -> Void)] = [
@@ -43,5 +49,50 @@ enum SelfSnapshot {
             try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(out)-\(name).png"))
         }
         NSApp.terminate(nil)
+    }
+}
+#else
+import SwiftUI
+
+/// Development aid for simulator screenshots (`xcrun simctl io booted screenshot`): with
+/// GLYPH_SNAPSHOT_IMAGE set, opens that image at launch; GLYPH_SNAPSHOT_ZOOM sets the zoom,
+/// GLYPH_SNAPSHOT_INSPECTOR=1 opens the inspector, and GLYPH_SNAPSHOT_SVG writes the finished SVG
+/// there (to compare with the Mac). Does nothing otherwise.
+enum SelfSnapshot {
+    static var showsInspector: Bool { ProcessInfo.processInfo.environment["GLYPH_SNAPSHOT_INSPECTOR"] != nil }
+
+    @MainActor
+    static func runIfRequested(_ model: AppModel) async {
+        let env = ProcessInfo.processInfo.environment
+        guard let image = env["GLYPH_SNAPSHOT_IMAGE"] else { return }
+        applyShotOptions(model, env)
+        model.open(URL(fileURLWithPath: image))
+        while model.vector == nil || model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+        if let zoom = env["GLYPH_SNAPSHOT_ZOOM"].flatMap(Double.init) { model.setZoom(zoom) }
+        // GLYPH_SNAPSHOT_PAN=x,y offsets the image (points) after zooming.
+        if let pan = env["GLYPH_SNAPSHOT_PAN"]?.split(separator: ",").compactMap({ Double($0) }), pan.count == 2 {
+            model.pan = CGSize(width: pan[0], height: pan[1])
+        }
+        // GLYPH_SNAPSHOT_THEN_STYLE switches style once the first result is up, as a person would.
+        if let style = env["GLYPH_SNAPSHOT_THEN_STYLE"].flatMap(OutputStyle.init(rawValue:)) {
+            style.apply(to: &model.options)
+            // Past the settings debounce, then until the re-trace is done.
+            try? await Task.sleep(for: .milliseconds(500))
+            while model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+        }
+        if let out = env["GLYPH_SNAPSHOT_SVG"], let svg = model.result?.svg {
+            try? svg.write(toFile: out, atomically: true, encoding: .utf8)
+        }
+    }
+}
+#endif
+
+extension SelfSnapshot {
+    /// GLYPH_SNAPSHOT_STYLE (an output style's name, e.g. "Halftone") and GLYPH_SNAPSHOT_SPLIT (the
+    /// compare divider, 0–1) shape a screenshot.
+    @MainActor
+    static func applyShotOptions(_ model: AppModel, _ env: [String: String]) {
+        if let style = env["GLYPH_SNAPSHOT_STYLE"].flatMap(OutputStyle.init(rawValue:)) { style.apply(to: &model.options) }
+        if let split = env["GLYPH_SNAPSHOT_SPLIT"].flatMap(Double.init) { model.split = split }
     }
 }

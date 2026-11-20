@@ -203,9 +203,15 @@ extension RGBA {
     }
 
     init(_ color: Color) {
+        #if os(macOS)
         let ns = NSColor(color).usingColorSpace(.sRGB) ?? .black
-        self.init(UInt8((ns.redComponent * 255).rounded()), UInt8((ns.greenComponent * 255).rounded()),
-                  UInt8((ns.blueComponent * 255).rounded()))
+        let (r, g, b) = (ns.redComponent, ns.greenComponent, ns.blueComponent)
+        #else
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+        UIColor(color).getRed(&r, green: &g, blue: &b, alpha: nil)
+        (r, g, b) = (min(1, max(0, r)), min(1, max(0, g)), min(1, max(0, b)))   // extended sRGB → sRGB
+        #endif
+        self.init(UInt8((r * 255).rounded()), UInt8((g * 255).rounded()), UInt8((b * 255).rounded()))
     }
 }
 

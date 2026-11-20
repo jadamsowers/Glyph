@@ -13,22 +13,34 @@
 		3F1E4138A2B562646FC7F59D /* GlyphApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */; };
 		4346192C8B5F1BD514400B99 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F27A4A3B54426A7160A07E /* ContentView.swift */; };
 		4601177403F550AF2316CC7F /* StyleSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2247A80D2A7592E4A193333 /* StyleSections.swift */; };
+		4956614A9DD059BCE063639C /* VectorCanvasIOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF359B5B6A0A22C26C344026 /* VectorCanvasIOS.swift */; };
 		554816182F2FD0BCEC635347 /* VectorCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC82D57A59A08942BF6B4B20 /* VectorCanvas.swift */; };
 		5DEE2FD7905734C6B33CE588 /* CanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */; };
+		6A75EFB0D308732659EC3867 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7395389E93A5A349623A97D /* CameraPicker.swift */; };
+		8FACA07D0EA977F6DCBE62A9 /* SVGDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F59121AB292B4310C235A8B /* SVGDocument.swift */; };
+		B4890CCA42336068A4611DA1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 50F926E4C5C3BDA6F73015B3 /* PrivacyInfo.xcprivacy */; };
+		DA7C7641E49028A8E3B7DE73 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D7A42EC68C43C90F778987 /* IOSContentView.swift */; };
 		EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F14525930CAEF4A7CA1506C /* Assets.xcassets */; };
 		F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F740250A1024E3A4A4CA997D /* InspectorView.swift */; };
+		F848176441E112CC92A10A8C /* CanvasRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70736F43550E612215AE3A0B /* CanvasRenderer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0893E4DAC7CA21E6BBD13A39 /* SelfSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfSnapshot.swift; sourceTree = "<group>"; };
+		24D7A42EC68C43C90F778987 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
+		4F59121AB292B4310C235A8B /* SVGDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGDocument.swift; sourceTree = "<group>"; };
+		50F926E4C5C3BDA6F73015B3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5F14525930CAEF4A7CA1506C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasView.swift; sourceTree = "<group>"; };
 		6C433D84F165A2D0D0E2C099 /* glyph */ = {isa = PBXFileReference; lastKnownFileType = folder; name = glyph; path = ..; sourceTree = SOURCE_ROOT; };
-		7D63D8525429087E12F800F0 /* Glyph.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glyph.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		70736F43550E612215AE3A0B /* CanvasRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasRenderer.swift; sourceTree = "<group>"; };
+		7D63D8525429087E12F800F0 /* Glyph.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Glyph.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF359B5B6A0A22C26C344026 /* VectorCanvasIOS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorCanvasIOS.swift; sourceTree = "<group>"; };
 		B0F27A4A3B54426A7160A07E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlyphApp.swift; sourceTree = "<group>"; };
 		DB18778819E4627A1086BC18 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		E2247A80D2A7592E4A193333 /* StyleSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSections.swift; sourceTree = "<group>"; };
+		E7395389E93A5A349623A97D /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		F740250A1024E3A4A4CA997D /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		FC82D57A59A08942BF6B4B20 /* VectorCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorCanvas.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -67,13 +79,18 @@
 			isa = PBXGroup;
 			children = (
 				DB18778819E4627A1086BC18 /* AppModel.swift */,
+				E7395389E93A5A349623A97D /* CameraPicker.swift */,
+				70736F43550E612215AE3A0B /* CanvasRenderer.swift */,
 				64F5B0D7D5A16E111D7D4C2A /* CanvasView.swift */,
 				B0F27A4A3B54426A7160A07E /* ContentView.swift */,
 				B5C9DA518F831BFC3522A0B7 /* GlyphApp.swift */,
 				F740250A1024E3A4A4CA997D /* InspectorView.swift */,
+				24D7A42EC68C43C90F778987 /* IOSContentView.swift */,
 				0893E4DAC7CA21E6BBD13A39 /* SelfSnapshot.swift */,
 				E2247A80D2A7592E4A193333 /* StyleSections.swift */,
+				4F59121AB292B4310C235A8B /* SVGDocument.swift */,
 				FC82D57A59A08942BF6B4B20 /* VectorCanvas.swift */,
+				AF359B5B6A0A22C26C344026 /* VectorCanvasIOS.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -82,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				5F14525930CAEF4A7CA1506C /* Assets.xcassets */,
+				50F926E4C5C3BDA6F73015B3 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -159,6 +177,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EFC7E2A04CD7FFB71AE53648 /* Assets.xcassets in Resources */,
+				B4890CCA42336068A4611DA1 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -170,13 +189,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				3DF6C216E6158F77EA44CAAD /* AppModel.swift in Sources */,
+				6A75EFB0D308732659EC3867 /* CameraPicker.swift in Sources */,
+				F848176441E112CC92A10A8C /* CanvasRenderer.swift in Sources */,
 				5DEE2FD7905734C6B33CE588 /* CanvasView.swift in Sources */,
 				4346192C8B5F1BD514400B99 /* ContentView.swift in Sources */,
 				3F1E4138A2B562646FC7F59D /* GlyphApp.swift in Sources */,
+				DA7C7641E49028A8E3B7DE73 /* IOSContentView.swift in Sources */,
 				F76A563BD1D03FAF5DE78668 /* InspectorView.swift in Sources */,
+				8FACA07D0EA977F6DCBE62A9 /* SVGDocument.swift in Sources */,
 				28B6CF0C762B5B21E09F7F51 /* SelfSnapshot.swift in Sources */,
 				4601177403F550AF2316CC7F /* StyleSections.swift in Sources */,
 				554816182F2FD0BCEC635347 /* VectorCanvas.swift in Sources */,
+				4956614A9DD059BCE063639C /* VectorCanvasIOS.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -187,25 +211,37 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Glyph.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Glyph-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Glyph-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Glyph.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_FILE[sdk=iphoneos*]" = "Glyph-iOS-Info.plist";
+				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Glyph-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Glyph;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Glyph traces photos you take into vector art.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
-					"@executable_path/../Frameworks",
+					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.jadam.glyph;
 				PRODUCT_NAME = Glyph;
-				SDKROOT = macosx;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -213,25 +249,37 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Glyph.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Glyph-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Glyph-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Glyph.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_FILE[sdk=iphoneos*]" = "Glyph-iOS-Info.plist";
+				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Glyph-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Glyph;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Glyph traces photos you take into vector art.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
-					"@executable_path/../Frameworks",
+					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.jadam.glyph;
 				PRODUCT_NAME = Glyph;
-				SDKROOT = macosx;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -286,12 +334,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -343,11 +392,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;

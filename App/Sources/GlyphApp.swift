@@ -9,6 +9,12 @@ struct GlyphApp: App {
     @AppStorage("canvasDarkBackground") private var darkBackground = false
 
     var body: some Scene {
+        #if os(iOS)
+        WindowGroup {
+            ContentView()
+                .environment(model)
+        }
+        #else
         Window("Glyph", id: "main") {
             ContentView()
                 .environment(model)
@@ -78,12 +84,15 @@ struct GlyphApp: App {
                     .keyboardShortcut("r", modifiers: [.command, .shift])
             }
         }
+        #endif
     }
 
+    #if os(macOS)
     private func openPanel() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url { model.open(url) }
     }
+    #endif
 }

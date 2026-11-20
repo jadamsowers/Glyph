@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "VectorEngine",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
         .library(name: "VectorEngine", targets: ["VectorEngine"]),
         .executable(name: "vectorize", targets: ["vectorize"]),
