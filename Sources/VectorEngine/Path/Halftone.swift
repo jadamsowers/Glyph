@@ -4,7 +4,7 @@ import Foundation
 public struct Halftone: Sendable, Equatable {
     public enum Shape: String, Sendable, CaseIterable { case dot, line }
 
-    /// Screen pitch (original px).
+    /// Screen pitch, in px of the image scaled down to `referenceSize` (the original if smaller).
     public var cellSize: Double
     /// Screen angle in degrees (45 is classic).
     public var angle: Double
@@ -16,12 +16,26 @@ public struct Halftone: Sendable, Equatable {
     public init(cellSize: Double = 8, angle: Double = 45, shape: Shape = .dot, ink: RGBA = RGBA(0, 0, 0), background: RGBA? = nil) {
         self.cellSize = cellSize; self.angle = angle; self.shape = shape; self.ink = ink; self.background = background
     }
+
+    /// Cell size is measured on the image scaled down to this long side (px) when it's larger, so
+    /// a camera photo gets the screen of a smaller copy rather than hundreds of thousands of dots.
+    public static let referenceSize = 1000.0
+    /// The most cells a screen gets, however small the cell: about what a canvas can redraw while
+    /// it's pinched.
+    public static let maxCells = 50_000
+
+    /// Screen pitch in original px for an image of this size.
+    func pitch(width: Int, height: Int) -> Double {
+        let scaled = cellSize * max(1, Double(max(width, height)) / Self.referenceSize)
+        return max(scaled, (Double(width) * Double(height) / Double(Self.maxCells)).squareRoot())
+    }
 }
 
 enum HalftoneGenerator {
     /// Dots (area ∝ darkness) or line segments (thickness ∝ darkness) on a rotated grid with pitch
     /// `cell` (processing px), in processing coordinates. Darkness is 1 − brightness, composited
-    /// over white, averaged over a 3×3 sampling of each cell.
+    /// over white, averaged over a 3×3 sampling of each cell. Each dot is its own shape: overlapping
+    /// dots stay ink under the even-odd rule, and small paths draw far faster than one huge one.
     static func shapes(_ b: Bitmap, cell: Double, _ h: Halftone) -> [VectorShape] {
         let w = Double(b.width), hgt = Double(b.height)
         let a = h.angle * .pi / 180
@@ -62,7 +76,7 @@ enum HalftoneGenerator {
                 }
             }
         }
-        return subpaths.isEmpty ? [] : [VectorShape(color: h.ink, subpaths: subpaths)]
+        return subpaths.map { VectorShape(color: h.ink, subpaths: [$0]) }
     }
 
     /// A circle as four cubic quarter-arcs.

@@ -188,8 +188,9 @@ public enum Pipeline {
         if r.output.centerline, let mono = r.quantize.monochrome {
             shapes = Centerline.trace(s.quantized!, ink: mono.ink, params: .init(tolerance: r.curve.tolerance))
         } else if let h = r.output.halftone {
-            // Cell size is given in original px; the screen is built on the processed bitmap.
-            shapes = HalftoneGenerator.shapes(s.prefiltered!, cell: max(1, h.cellSize / input.scaleX), h)
+            // The pitch is in original px; the screen is built on the processed bitmap.
+            let pitch = h.pitch(width: input.originalWidth, height: input.originalHeight)
+            shapes = HalftoneGenerator.shapes(s.prefiltered!, cell: max(1, pitch / input.scaleX), h)
         } else {
             shapes = ShapeAssembler.shapes(topology: s.topology!, regions: s.segmentation!.regions, curves: curves, tracing: r.output.tracing)
         }

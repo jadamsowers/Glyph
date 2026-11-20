@@ -74,6 +74,7 @@ struct HalftoneSection: View {
             }
             .pickerStyle(.segmented)
             LabeledSlider(title: "Cell size", value: $halftone.cellSize, range: 2...40, step: 0.5, format: "%.1f px")
+                .help("Measured on the image scaled down to 1000 px when it's larger, so photos of any resolution get the same screen")
             LabeledSlider(title: "Angle", value: $halftone.angle, range: 0...90, step: 1, format: "%.0f°")
             ColorPicker("Ink", selection: $halftone.ink.color, supportsOpacity: false)
             OptionalColor(title: "Background", color: $halftone.background)
