@@ -73,6 +73,13 @@ enum SelfSnapshot {
         if let pan = env["GLYPH_SNAPSHOT_PAN"]?.split(separator: ",").compactMap({ Double($0) }), pan.count == 2 {
             model.pan = CGSize(width: pan[0], height: pan[1])
         }
+        // GLYPH_SNAPSHOT_THEN_STYLE switches style once the first result is up, as a person would.
+        if let style = env["GLYPH_SNAPSHOT_THEN_STYLE"].flatMap(OutputStyle.init(rawValue:)) {
+            style.apply(to: &model.options)
+            // Past the settings debounce, then until the re-trace is done.
+            try? await Task.sleep(for: .milliseconds(500))
+            while model.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+        }
         if let out = env["GLYPH_SNAPSHOT_SVG"], let svg = model.result?.svg {
             try? svg.write(toFile: out, atomically: true, encoding: .utf8)
         }
