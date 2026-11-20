@@ -70,6 +70,16 @@ import Testing
         #expect(r.svg.components(separatedBy: "<path").count - 1 == dots(r).count)
     }
 
+    // Line segments abut along a screen row; filled as separate anti-aliased shapes, every shared
+    // edge would show as a light tick. A row is one path, so it fills without seams.
+    @Test func lineRowsHaveNoSeams() throws {
+        let gray = Bitmap(width: 200, height: 60) { _, _ in RGBA(100, 100, 100) }
+        let r = try run(gray, Halftone(cellSize: 7.5, angle: 0, shape: .line))
+        // A line runs along y ≈ 33.75, about 4.6 px thick; cells meet at x = 107.5, 122.5, ….
+        let raster = ShapeRenderer.rasterize(r.shapes, width: 200, height: 60)
+        #expect((10..<190).allSatisfy { raster[$0, 33].a == 255 })
+    }
+
     // However small the cell, the screen stays within a budget the canvas can draw interactively.
     @Test func screenStaysWithinTheDotBudget() throws {
         let black = Bitmap(width: 1000, height: 750) { _, _ in TestImages.black }
