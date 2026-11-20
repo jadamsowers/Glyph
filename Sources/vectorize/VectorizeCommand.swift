@@ -55,7 +55,7 @@ struct VectorizeCommand: ParsableCommand {
     @Option(help: "Rotate the output clockwise by 0, 90, 180 or 270 degrees.") var rotate: Int = 0
     @Option(help: "Physical size: pixels per inch (sets width/height in inches).") var dpi: Double?
     @Flag(help: "Line art: trace single stroked centerlines instead of filled outlines (implies --mono).") var centerline = false
-    @Option(help: "Vector halftone with this cell size in pixels, instead of tracing.") var halftone: Double?
+    @Option(help: "Vector halftone with this cell size in pixels (of the image scaled down to 1000 px when larger), instead of tracing.") var halftone: Double?
     @Option(help: "Halftone screen angle in degrees.") var halftoneAngle: Double = 45
     @Option(help: "Halftone shape: dot or line.") var halftoneShape: HalftoneShape = .dot
     @Flag(name: .shortAndLong, help: "Print stage timings, analysis and stats.") var verbose = false
