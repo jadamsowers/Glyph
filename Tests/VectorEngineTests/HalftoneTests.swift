@@ -42,6 +42,16 @@ import Testing
         #expect(tilted.count > ys.count)
     }
 
+    // The seam underlay hides gaps between neighboring traced shapes. A halftone is one shape: an
+    // underlay would only grow every dot (darkening light areas) and double the drawing.
+    @Test func screenHasNoSeamUnderlay() throws {
+        let gray = Bitmap(width: 64, height: 64) { _, _ in RGBA(128, 128, 128) }
+        var o = Options(tracing: .stacked); o.halftone = Halftone(cellSize: 8)
+        let r = try #require(try Pipeline.run(input: InputImage(bitmap: gray), options: o).result)
+        #expect(r.seamStroke == 0)
+        #expect(!r.svg.contains("stroke"))
+    }
+
     @Test func lineStyleEmitsPolygons() throws {
         let gray = Bitmap(width: 64, height: 64) { _, _ in RGBA(100, 100, 100) }
         let r = try run(gray, Halftone(cellSize: 8, angle: 30, shape: .line))
