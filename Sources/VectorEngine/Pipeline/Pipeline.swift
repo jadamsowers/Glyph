@@ -243,9 +243,10 @@ public enum Pipeline {
             let (shapes, outW, outH) = outputShapes(s, curves: s.curves!)
             // Stacked output gets an underlay stroke to hide sibling seams: at least one processing
             // pixel, and at least one display pixel when shown smaller (output units throughout).
+            // A halftone is one shape with no siblings to seam.
             let longSide = Double(max(input.originalWidth, input.originalHeight))
             let displayPixel = s.options.displaySize.map { longSide / Double(max(1, min(Int(longSide), $0))) } ?? 1
-            let seam = r.output.tracing == .stacked ? max(input.scaleX, input.scaleY, displayPixel) : 0
+            let seam = r.output.tracing == .stacked && r.output.halftone == nil ? max(input.scaleX, input.scaleY, displayPixel) : 0
             // Measure fidelity before orienting: the reference bitmap is in the unrotated frame.
             // Black-and-white is judged against its own ink/paper split; a halftone has no
             // pixel-for-pixel reference at all.
