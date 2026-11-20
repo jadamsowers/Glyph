@@ -56,32 +56,66 @@ enum Centerline {
     // MARK: Thinning
 
     /// Zhang–Suen thinning to an 8-connected, one-pixel-wide skeleton.
+    ///
+    /// Only ink pixels touching paper can be removed (a removable pixel has at least two paper
+    /// neighbors), and whether a pixel goes depends only on its neighbors and the pass. So each
+    /// pass checks a work list: the border to start with, then the ink around removed pixels. A
+    /// pixel both passes have kept leaves the list until a neighbor goes. The result is the same as
+    /// scanning every pixel, but the work follows the ink that changes instead of the image area
+    /// times the thickest stroke.
     static func thin(_ mask: [Bool], _ w: Int, _ h: Int) -> [Bool] {
         var m = mask
         func px(_ x: Int, _ y: Int) -> Int { x < 0 || y < 0 || x >= w || y >= h ? 0 : (m[y * w + x] ? 1 : 0) }
+        func removable(_ i: Int, pass: Int) -> Bool {
+            let x = i % w, y = i / w
+            // Neighbors P2…P9 clockwise from north.
+            let n0 = px(x, y - 1), n1 = px(x + 1, y - 1), n2 = px(x + 1, y), n3 = px(x + 1, y + 1)
+            let n4 = px(x, y + 1), n5 = px(x - 1, y + 1), n6 = px(x - 1, y), n7 = px(x - 1, y - 1)
+            let b = n0 + n1 + n2 + n3 + n4 + n5 + n6 + n7
+            guard b >= 2 && b <= 6 else { return false }
+            func rise(_ p: Int, _ q: Int) -> Int { p == 0 && q == 1 ? 1 : 0 }
+            let a = rise(n0, n1) + rise(n1, n2) + rise(n2, n3) + rise(n3, n4)
+                + rise(n4, n5) + rise(n5, n6) + rise(n6, n7) + rise(n7, n0)
+            guard a == 1 else { return false }
+            return pass == 0
+                ? n0 * n2 * n4 == 0 && n2 * n4 * n6 == 0
+                : n0 * n2 * n6 == 0 && n0 * n4 * n6 == 0
+        }
+        // Bit `pass` set: kept by that pass, and no neighbor has gone since.
+        var kept = [UInt8](repeating: 0, count: w * h)
+        var listed = [Bool](repeating: false, count: w * h)
+        var work: [Int] = []
+        for y in 0..<h {
+            for x in 0..<w where m[y * w + x] && offsets.contains(where: { px(x + $0.0, y + $0.1) == 0 }) {
+                listed[y * w + x] = true
+                work.append(y * w + x)
+            }
+        }
         var changed = true
         while changed {
             changed = false
             for pass in 0..<2 {
                 var remove: [Int] = []
-                for y in 0..<h {
-                    for x in 0..<w where m[y * w + x] {
-                        // Neighbors P2…P9 clockwise from north.
-                        let n = [px(x, y - 1), px(x + 1, y - 1), px(x + 1, y), px(x + 1, y + 1),
-                                 px(x, y + 1), px(x - 1, y + 1), px(x - 1, y), px(x - 1, y - 1)]
-                        let b = n.reduce(0, +)
-                        guard b >= 2 && b <= 6 else { continue }
-                        var a = 0
-                        for i in 0..<8 where n[i] == 0 && n[(i + 1) % 8] == 1 { a += 1 }
-                        guard a == 1 else { continue }
-                        let ok = pass == 0
-                            ? n[0] * n[2] * n[4] == 0 && n[2] * n[4] * n[6] == 0
-                            : n[0] * n[2] * n[6] == 0 && n[0] * n[4] * n[6] == 0
-                        if ok { remove.append(y * w + x) }
-                    }
+                for i in work {
+                    if removable(i, pass: pass) { remove.append(i) } else { kept[i] |= 1 << pass }
                 }
                 for i in remove { m[i] = false }
                 if !remove.isEmpty { changed = true }
+                for i in remove {
+                    let x = i % w, y = i / w
+                    for (dx, dy) in offsets {
+                        let nx = x + dx, ny = y + dy
+                        guard nx >= 0, ny >= 0, nx < w, ny < h, m[ny * w + nx] else { continue }
+                        let j = ny * w + nx
+                        kept[j] = 0
+                        if !listed[j] { listed[j] = true; work.append(j) }
+                    }
+                }
+                work.removeAll { i in
+                    let done = !m[i] || kept[i] == 3
+                    if done { listed[i] = false }
+                    return done
+                }
             }
         }
         return m
@@ -89,30 +123,35 @@ enum Centerline {
 
     /// Removes skeleton pixels whose neighbors stay 8-connected without them (staircase corners),
     /// so every interior skeleton pixel has exactly two neighbors and junctions are real.
+    ///
+    /// Sweeps the skeleton in raster order until nothing changes. A pixel kept by one sweep is kept
+    /// by the next unless a neighbor went in between, so sweeps re-check only those pixels.
     static func removeCorners(_ sk: [Bool], _ w: Int, _ h: Int) -> [Bool] {
         var m = sk
         func px(_ x: Int, _ y: Int) -> Bool { x >= 0 && y >= 0 && x < w && y < h && m[y * w + x] }
+        let skeleton = sk.indices.filter { sk[$0] }
+        var stale = sk
         var changed = true
         while changed {
             changed = false
-            for y in 0..<h {
-                for x in 0..<w where m[y * w + x] {
-                    let set = offsets.filter { px(x + $0.0, y + $0.1) }
-                    guard set.count >= 2 && set.count <= 3 else { continue }
-                    // Redundant if the neighbors are one 8-connected group without this pixel
-                    // (e.g. W and N touch diagonally): removing it can't break the skeleton.
-                    var group = [set[0]], rest = Array(set.dropFirst())
-                    var grew = true
-                    while grew {
-                        grew = false
-                        for (k, r) in rest.enumerated().reversed() where group.contains(where: { abs($0.0 - r.0) <= 1 && abs($0.1 - r.1) <= 1 }) {
-                            group.append(r); rest.remove(at: k); grew = true
-                        }
-                    }
-                    if rest.isEmpty {
-                        m[y * w + x] = false
-                        changed = true
-                    }
+            for i in skeleton where m[i] && stale[i] {
+                stale[i] = false
+                let x = i % w, y = i / w
+                var count = 0, a = (0, 0), b = (0, 0), c = (0, 0)
+                for o in offsets where px(x + o.0, y + o.1) {
+                    switch count { case 0: a = o; case 1: b = o; case 2: c = o; default: break }
+                    count += 1
+                }
+                guard count == 2 || count == 3 else { continue }
+                // Redundant if the neighbors are one 8-connected group without this pixel
+                // (e.g. W and N touch diagonally): removing it can't break the skeleton.
+                // Three neighbors are one group when at least two of their pairs touch.
+                func touch(_ p: (Int, Int), _ q: (Int, Int)) -> Int { abs(p.0 - q.0) <= 1 && abs(p.1 - q.1) <= 1 ? 1 : 0 }
+                let connected = count == 2 ? touch(a, b) == 1 : touch(a, b) + touch(a, c) + touch(b, c) >= 2
+                if connected {
+                    m[i] = false
+                    changed = true
+                    for o in offsets where px(x + o.0, y + o.1) { stale[(y + o.1) * w + x + o.0] = true }
                 }
             }
         }
