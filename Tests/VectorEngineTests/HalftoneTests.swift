@@ -42,6 +42,62 @@ import Testing
         #expect(tilted.count > ys.count)
     }
 
+    // Cell size is measured on the image as if scaled down to `Halftone.referenceSize`: a camera
+    // photo gets the screen a smaller copy of it would, not hundreds of thousands of dots.
+    @Test func largeImagesGetTheScreenOfASmallerCopy() throws {
+        // A camera photo arrives already scaled down for processing: 1000 px standing in for 3000.
+        let gray = Bitmap(width: 1000, height: 1000) { _, _ in RGBA(100, 100, 100) }
+        var o = Options(); o.halftone = Halftone(cellSize: 8, angle: 0)
+        let small = dots(try run(gray, o.halftone!))
+        let large = dots(try #require(try Pipeline.run(input: InputImage(bitmap: gray, originalWidth: 3000, originalHeight: 3000),
+                                                       options: o).result))
+        #expect(abs(large.count - small.count) <= small.count / 20, "\(small.count) dots at 1000 px, \(large.count) at 3000 px")
+        // Same pattern, three times the size.
+        let r = small.map(\.1).sorted(), R = large.map(\.1).sorted()
+        #expect(abs(R[R.count / 2] - 3 * r[r.count / 2]) < 1)
+    }
+
+    // Dark dots are sized to overlap so dark areas go solid. Under the even-odd rule one path of
+    // dots cancels where two overlap; each dot is its own shape, so overlaps stay ink — in the
+    // canvas and in the SVG (one <path> per dot). Separate small paths also draw in time
+    // proportional to the dots, where one huge path slows down far faster than that.
+    @Test func overlappingDotsStayInk() throws {
+        let black = Bitmap(width: 80, height: 80) { _, _ in TestImages.black }
+        let r = try run(black, Halftone(cellSize: 20, angle: 0))
+        // Dots centered at x = 30 and 50 (row y = 30) overlap between x ≈ 38.7 and 41.3.
+        let raster = ShapeRenderer.rasterize(r.shapes, width: 80, height: 80, antialias: false)
+        #expect(raster[39, 29].a == 255)
+        #expect(r.svg.components(separatedBy: "<path").count - 1 == dots(r).count)
+    }
+
+    // Line segments abut along a screen row; filled as separate anti-aliased shapes, every shared
+    // edge would show as a light tick. A row is one path, so it fills without seams.
+    @Test func lineRowsHaveNoSeams() throws {
+        let gray = Bitmap(width: 200, height: 60) { _, _ in RGBA(100, 100, 100) }
+        let r = try run(gray, Halftone(cellSize: 7.5, angle: 0, shape: .line))
+        // A line runs along y ≈ 33.75, about 4.6 px thick; cells meet at x = 107.5, 122.5, ….
+        let raster = ShapeRenderer.rasterize(r.shapes, width: 200, height: 60)
+        #expect((10..<190).allSatisfy { raster[$0, 33].a == 255 })
+    }
+
+    // However small the cell, the screen stays within a budget the canvas can draw interactively.
+    @Test func screenStaysWithinTheDotBudget() throws {
+        let black = Bitmap(width: 1000, height: 750) { _, _ in TestImages.black }
+        let n = dots(try run(black, Halftone(cellSize: 2, angle: 0))).count
+        #expect(n <= Halftone.maxCells + Halftone.maxCells / 20, "\(n) dots")
+        #expect(n >= Halftone.maxCells * 3 / 4, "\(n) dots")
+    }
+
+    // The seam underlay hides gaps between neighboring traced shapes. A halftone is one shape: an
+    // underlay would only grow every dot (darkening light areas) and double the drawing.
+    @Test func screenHasNoSeamUnderlay() throws {
+        let gray = Bitmap(width: 64, height: 64) { _, _ in RGBA(128, 128, 128) }
+        var o = Options(tracing: .stacked); o.halftone = Halftone(cellSize: 8)
+        let r = try #require(try Pipeline.run(input: InputImage(bitmap: gray), options: o).result)
+        #expect(r.seamStroke == 0)
+        #expect(!r.svg.contains("stroke"))
+    }
+
     @Test func lineStyleEmitsPolygons() throws {
         let gray = Bitmap(width: 64, height: 64) { _, _ in RGBA(100, 100, 100) }
         let r = try run(gray, Halftone(cellSize: 8, angle: 30, shape: .line))
