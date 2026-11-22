@@ -34,3 +34,10 @@ The marketing version is `MARKETING_VERSION` in `App/project.yml`. Raise it when
 - The Graphics & Design category, which the Mac App Store requires.
 - The App Sandbox on macOS, with read-write access to files the user picks (`App/Glyph.entitlements`).
 - On iOS, the increased memory limit entitlement (`App/Glyph-iOS.entitlements`), which gives full-resolution phone photos headroom, and the camera usage string.
+
+## On every merge to main
+`.github/workflows/testflight.yml` runs `scripts/testflight.sh` whenever `main` changes, and on demand from Actions › TestFlight › Run workflow. It runs on a self-hosted GitHub Actions runner on the dev Mac, with the labels `self-hosted, macOS, ARM64, glyph`.
+- **Install:** `~/actions-runner-glyph`, as a launchd service. Manage it with `cd ~/actions-runner-glyph && ./svc.sh status|start|stop`. It's separate from OttoCue's runner in `~/actions-runner`, because a runner registered to a personal repo serves only that repo.
+- **What it reuses from the Mac:** Xcode, xcodegen and the API key in `~/.appstoreconnect`. The key IDs are repo variables (`ASC_KEY_ID`, `ASC_ISSUER_ID`). The key file never leaves the Mac.
+- **The Mac must be on and awake.** A queued job runs when it is.
+- **Because the repo is public:** only pushes to `main` use this runner, and pull request checks stay on GitHub's machines. Workflows from anyone outside the repo wait for approval: Settings › Actions › General › "Require approval for all external contributors". Approve a fork's run only after reading its changes, `.github/` included, because an approved workflow can target this runner and run on the Mac.

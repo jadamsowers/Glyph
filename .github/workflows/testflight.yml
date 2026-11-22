@@ -1,0 +1,32 @@
+# Uploads a TestFlight build (Mac, iPhone and iPad) whenever main changes, and on demand.
+#
+# It runs on the self-hosted runner on the dev Mac (label "glyph"), which already has Xcode, xcodegen
+# and the App Store Connect key in ~/.appstoreconnect: no key is stored in GitHub. The repo is
+# public, so only pushes to main run here, never pull requests, and workflows from anyone outside
+# the repo wait for the owner's approval (Settings › Actions › Fork pull request workflows).
+name: TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One upload at a time; a second merge waits for the first rather than racing it.
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: [self-hosted, macOS, ARM64, glyph]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive and upload
+        env:
+          ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
+        run: scripts/testflight.sh
